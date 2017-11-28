@@ -21,7 +21,7 @@ def Convert1DTo2D(vector):
 class RNN:
     def __init__(self,
                  input_layer_size,
-                 hidden_layer_size, state_layer_activation,
+                 state_layer_size, state_layer_activation,
                  output_layer_size, output_layer_activation,
                  epochs = 100,
                  bptt_truncate=None,
@@ -40,8 +40,8 @@ class RNN:
             input_size:
                 Size of the input vector. We expect a 2D numpy array, so this should be X.shape[1]
 
-            hidden_layer_size:
-                Hidden layer size.
+            state_layer_size:
+                State layer size.
 
             state_layer_activation:
                 Activation of s_t. Choose from 'sigmoid', 'ReLU', 'softmax', 'tanh'.
@@ -95,7 +95,7 @@ class RNN:
 
         self.input_layer_size = input_layer_size
 
-        self.hidden_layer_size = hidden_layer_size
+        self.state_layer_size = state_layer_size
         self.state_layer_activation = state_layer_activation
         self.state_activation = Activation(state_layer_activation)
 
@@ -113,13 +113,13 @@ class RNN:
         # V - weight matrix from hidden layer to output layer.
         self.U = np.random.uniform(-np.sqrt(1./input_layer_size),
                                     np.sqrt(1./input_layer_size), 
-                                    (hidden_layer_size, input_layer_size))
-        self.V = np.random.uniform(-np.sqrt(1./hidden_layer_size),
-                                    np.sqrt(1./hidden_layer_size),
-                                    (output_layer_size, hidden_layer_size))
-        self.W = np.random.uniform(-np.sqrt(1./hidden_layer_size),
-                                    np.sqrt(1./hidden_layer_size),
-                                    (hidden_layer_size, hidden_layer_size))
+                                    (state_layer_size, input_layer_size))
+        self.V = np.random.uniform(-np.sqrt(1./state_layer_size),
+                                    np.sqrt(1./state_layer_size),
+                                    (output_layer_size, state_layer_size))
+        self.W = np.random.uniform(-np.sqrt(1./state_layer_size),
+                                    np.sqrt(1./state_layer_size),
+                                    (state_layer_size, state_layer_size))
 
 
         self.eta = eta
@@ -170,9 +170,9 @@ class RNN:
         """
         T = x.shape[0]
 
-        s = np.zeros((T + 1, self.hidden_layer_size))
+        s = np.zeros((T + 1, self.state_layer_size))
         o = np.zeros((T, self.output_layer_size))
-        s_linear = np.zeros((T + 1, self.hidden_layer_size))
+        s_linear = np.zeros((T + 1, self.state_layer_size))
         o_linear = np.zeros((T, self.output_layer_size))
         
         for t in np.arange(T):
@@ -303,12 +303,12 @@ if __name__ == "__main__":
     x = np.array([[1,1], [2,2], [3,3], [4,4]])
     y = x / 10.
     input_size = x.shape[1]
-    hidden_layer_size = 4
+    state_layer_size = 4
     output_size = y.shape[1]
     state_layer_activation = 'sigmoid'
     output_layer_activation = 'tanh'
 
-    rnn = RNN(input_size, hidden_layer_size, state_layer_activation, 
+    rnn = RNN(input_size, state_layer_size, state_layer_activation, 
               output_size, output_layer_activation, eta = 0.01, epochs=1000, verbose=1)
 
     X_train = [x]

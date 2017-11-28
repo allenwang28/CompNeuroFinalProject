@@ -1,5 +1,12 @@
 import numpy as np
 
+activation_choices = [
+    'sigmoid',
+    'ReLU',
+    'softmax',
+    'tanh'
+]
+
 def sigmoid(x):
     return 1. / (1. + np.exp(-x))
 
