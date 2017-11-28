@@ -1,11 +1,5 @@
 import numpy as np
 
-activation_choices = [
-    'sigmoid',
-    'ReLU',
-    'softmax',
-    'tanh'
-]
 
 def sigmoid(x):
     return 1. / (1. + np.exp(-x))
@@ -33,6 +27,30 @@ def tanh(x):
 def tanh_derivative(x):
     return 1.0 - np.tanh(x)**2
 
+def linear(x):
+    return x
+
+def linear_derivative(x):
+    return 1
+
+activation_map = {
+    'sigmoid':sigmoid,
+    'relu':ReLU,
+    'softmax':softmax,
+    'tanh':tanh,
+    'linear':linear,
+}
+
+dactivation_map = {
+    'sigmoid':sigmoid_derivative,
+    'relu':ReLU_derivative,
+    'softmax':softmax_derivative,
+    'tanh':tanh_derivative,
+    'linear':linear_derivative,
+}
+
+activation_choices = activation_map.keys()
+
 class Activation:
     def __init__(self, activation):
         """
@@ -41,20 +59,8 @@ class Activation:
         """
         activation = activation.lower()
 
-        if activation == 'sigmoid':
-            self.activation = sigmoid
-            self.activation_derivative = sigmoid_derivative
-        elif activation == 'relu':
-            self.activation = ReLU
-            self.activation_derivative = ReLU_derivative
-        elif activation == 'softmax':
-            self.activation = softmax
-            self.activation_derivative = softmax_derivative
-        elif activation == 'tanh':
-            self.activation = tanh
-            self.activation_derivative = tanh_derivative
-        else:
-            raise ValueError
+        self.activation = activation_map[activation]
+        self.activation_derivative = dactivation_map[activation]
 
     def activate(self, input_vec):
         return self.activation(input_vec)

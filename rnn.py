@@ -17,6 +17,13 @@ def Convert1DTo2D(vector):
     assert len(vector.shape) == 1
     return vector.reshape(vector.shape[0], 1)
 
+def Convert2DTo1D(vector):
+    # Ensure that the vector is indeed 2D
+    assert len(vector.shape) == 2
+    assert vector.shape[1] == 1
+    return vector.flatten()
+
+
 
 class RNN:
     def __init__(self,
@@ -44,13 +51,13 @@ class RNN:
                 State layer size.
 
             state_layer_activation:
-                Activation of s_t. Choose from 'sigmoid', 'ReLU', 'softmax', 'tanh'.
+                A string. Refer to activation.py
 
             output_size:
                 Size of the output vector. We expect a 2D numpy array, so this should be Y.shape[1]
 
             output_layer_activation:
-                Activation of o_t. Choose from 'sigmoid', 'ReLU', 'softmax', 'tanh'.
+                A string. Refer to activation.py
 
             epochs(opt):
                 Number of epochs for a single training sample.
@@ -108,9 +115,9 @@ class RNN:
         self.kernel = kernel
         self.bptt_truncate = bptt_truncate
 
-        # U - weight matrix from input into hidden layer.
-        # W - weight matrix from hidden layer to hidden layer.
-        # V - weight matrix from hidden layer to output layer.
+        # U - weight matrix from input into state layer.
+        # W - weight matrix from state layer to state layer.
+        # V - weight matrix from state layer to output layer.
         self.U = np.random.uniform(-np.sqrt(1./input_layer_size),
                                     np.sqrt(1./input_layer_size), 
                                     (state_layer_size, input_layer_size))
@@ -120,6 +127,8 @@ class RNN:
         self.W = np.random.uniform(-np.sqrt(1./state_layer_size),
                                     np.sqrt(1./state_layer_size),
                                     (state_layer_size, state_layer_size))
+        self.state_bias = np.zeros((state_layer_size,1))
+        self.output_bias = np.zeros((output_layer_size, 1))
 
 
         self.eta = eta
@@ -148,10 +157,12 @@ class RNN:
 
         for epoch in range(self.epochs):
             for x, y in zip(X_train, y_train):
-                dLdU, dLdV, dLdW = self.gradient_function(x, y)
+                dLdU, dLdV, dLdW, dLdOb, dLdSb = self.gradient_function(x, y)
                 self.U -= eta * dLdU
                 self.V -= eta * dLdV
                 self.W -= eta * dLdW
+                self.output_bias -= dLdOb
+                self.state_bias -= dLdSb
 
             if self.show_progress_bar:
                 bar.update(epoch)
@@ -174,12 +185,15 @@ class RNN:
         o = np.zeros((T, self.output_layer_size))
         s_linear = np.zeros((T + 1, self.state_layer_size))
         o_linear = np.zeros((T, self.output_layer_size))
+
+        state_bias = Convert2DTo1D(self.state_bias)
+        output_bias = Convert2DTo1D(self.output_bias)
         
         for t in np.arange(T):
-            state_linear = np.dot(self.U, x[t]) + np.dot(self.W, s[t-1])
+            state_linear = np.dot(self.U, x[t]) + np.dot(self.W, s[t-1]) + state_bias
             s_linear[t] = state_linear
             s[t] = self.state_activation.activate(state_linear)
-            output_linear = np.dot(self.V, s[t])
+            output_linear = np.dot(self.V, s[t]) + output_bias
             o[t] = self.output_activation.activate(output_linear)
             o_linear[t] = output_linear
         return (o, s, s_linear, o_linear)
@@ -193,6 +207,10 @@ class RNN:
                     Gradient for V matrix
                 dLdW:
                     Gradient for W matrix
+                dLdOb:
+                    Gradient for output layer bias
+                dLdSb:
+                    Gradient for state layer bias
             TODO - implement this
         """
         raise NotImplementedError
@@ -206,6 +224,10 @@ class RNN:
                     Gradient for V matrix
                 dLdW:
                     Gradient for W matrix
+                dLdOb:
+                    Gradient for output layer bias
+                dLdSb:
+                    Gradient for state layer bias
         """
         # TODO - numpy likes to provide 1D matrices instead of 2D, and unfortunately
         # we need 2D matrices. Therefore we have a lot of converting 1D to 2D matrices
@@ -227,6 +249,9 @@ class RNN:
         dLdV = np.zeros(self.V.shape)
         dLdW = np.zeros(self.W.shape)
 
+        dLdOb = np.zeros(self.output_bias.shape)
+        dLdSb = np.zeros(self.state_bias.shape)
+
         num_dU_additions = 0
         num_dVdW_additions = 0
 
@@ -243,6 +268,7 @@ class RNN:
 
             g = g * self.output_activation.dactivate(o_linear_val)
             dLdV += np.dot(g, state_activation.T)
+            dLdOb += g
             num_dU_additions += 1
             g = np.dot(self.V.T, g)
 
@@ -259,10 +285,15 @@ class RNN:
                 g = g  * self.state_activation.dactivate(state_linear)
                 dLdW += np.dot(g, state_activation_prev.T)
                 dLdU += np.dot(g, x_present.T)
+                dLdSb += g
                 num_dVdW_additions += 1
 
                 g = g * np.dot(self.W.T, g)
-        return [dLdU/num_dU_additions, dLdV/num_dVdW_additions, dLdW/num_dVdW_additions]
+        return [dLdU/num_dU_additions, 
+                dLdV/num_dVdW_additions, 
+                dLdW/num_dVdW_additions, 
+                dLdOb/num_dU_additions, 
+                dLdSb/num_dVdW_additions]
 
     def predict(self, X):
         """
@@ -301,15 +332,17 @@ class RNN:
 if __name__ == "__main__":
     # Example usage
     x = np.array([[1,1], [2,2], [3,3], [4,4]])
-    y = x / 10.
+    y = x[1:] * 10
+    x = x[:-1]
+
     input_size = x.shape[1]
-    state_layer_size = 4
+    state_layer_size = 8
     output_size = y.shape[1]
     state_layer_activation = 'sigmoid'
-    output_layer_activation = 'tanh'
+    output_layer_activation = 'linear'
 
     rnn = RNN(input_size, state_layer_size, state_layer_activation, 
-              output_size, output_layer_activation, eta = 0.01, epochs=1000, verbose=1)
+              output_size, output_layer_activation, eta = 0.005, epochs=1000, verbose=1)
 
     X_train = [x]
     y_train = [y]
@@ -323,7 +356,7 @@ if __name__ == "__main__":
     rnn.fit(X_train, y_train)
 
     o, s, _, _ = rnn.forward_propagation(x)
-    print "After training:"
+    print "\nAfter training:"
     print "Outputs:"
     print o
     print "MSE:"
