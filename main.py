@@ -81,7 +81,7 @@ if __name__ == "__main__":
               verbose=args.verbose)
 
     # TODO - dummy placeholder simulation below
-    with open(args.training_data_path, 'wb') as f:
+    with open(args.training_data_path, 'rb') as f:
       trajectories = pickle.load(f)
     
     X = []
