@@ -4,6 +4,7 @@ from rnn import RNN
 import activation
 
 import argparse
+import pickle
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -13,11 +14,16 @@ if __name__ == "__main__":
                         action='store',
                         help="Choose between \'bptt\' and \'modified\'")
 
+    parser.add_argument('--training_data_path',
+                        type=str,
+                        help='Path to pickled training data')
+
     # Optional args
     parser.add_argument('--bptt_truncate',
-                         action='store',
-                         default=None,
-                         help='Truncation for BPTT - Not providing this means there is no truncation')
+                        type=int,
+                        action='store',
+                        default=None,
+                        help='Truncation for BPTT - Not providing this means there is no truncation')
 
     parser.add_argument('--kernel', help='TODO')
 
@@ -34,17 +40,19 @@ if __name__ == "__main__":
                         default='tanh')
     parser.add_argument('--state_layer_size',
                         action='store',
+                        type=int,
                         help='state layer size',
                         default=2)
 
-    parser.add_argument('--eta', help='Learning Rate', default=0.001)
-    parser.add_argument('--epochs', help='Epochs', default=1000)
+    parser.add_argument('--eta', help='Learning Rate', type=float, default=0.001)
+    parser.add_argument('--epochs', help='Epochs', type=int, default=1000)
     parser.add_argument('--v', '--verbose',
+                        type=int,
                         help='Between 0-2', 
-                        dest='verbose',
-                        action='store_true')
+                        dest='verbose')
 
     parser.add_argument('--rand',
+                        type=int,
                         help='Random seed',
                         default=None)
 
@@ -73,6 +81,9 @@ if __name__ == "__main__":
               verbose=args.verbose)
 
     # TODO - dummy placeholder simulation below
+    with open(args.training_data_path, 'wb') as f:
+      trajectories = pickle.load(f)
+    
     X = []
     Y = []
     for i in range(10):
