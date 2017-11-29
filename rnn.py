@@ -96,7 +96,7 @@ class RNN:
         if self.learning_rule == 'bptt':
             self.gradient_function = self.bptt
         elif self.learning_rule == 'modified':
-            self.gradietn_function = self.modified_learning_rule
+            self.gradient_function = self.modified_learning_rule
         else:
             raise ValueError
 
