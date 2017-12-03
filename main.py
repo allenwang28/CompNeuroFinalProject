@@ -37,7 +37,7 @@ if __name__ == "__main__":
                         choices=activation.activation_choices,
                         action='store',
                         help='Output layer activation',
-                        default='tanh')
+                        default='linear')
     parser.add_argument('--state_layer_size',
                         action='store',
                         type=int,
@@ -81,8 +81,8 @@ if __name__ == "__main__":
               verbose=args.verbose)
 
     # TODO - dummy placeholder simulation below
-    with open(args.training_data_path, 'wb') as f:
-      trajectories = pickle.load(f)
+    #with open(args.training_data_path, 'wb') as f:
+    #  trajectories = pickle.load(f)
     
     X = []
     Y = []

@@ -92,7 +92,7 @@ class RNN:
         np.random.seed(rand)
 
         self.learning_rule = learning_rule.lower()
-
+        
         if self.learning_rule == 'bptt':
             self.gradient_function = self.bptt
         elif self.learning_rule == 'modified':
@@ -114,11 +114,12 @@ class RNN:
 
         self.kernel = kernel
         self.bptt_truncate = bptt_truncate
-
+    
         # U - weight matrix from input into state layer.
         # W - weight matrix from state layer to state layer.
         # V - weight matrix from state layer to output layer.
-        self.U = np.random.uniform(-np.sqrt(1./input_layer_size),
+        """
+        self.U = np.eye(-np.sqrt(1./input_layer_size),
                                     np.sqrt(1./input_layer_size), 
                                     (state_layer_size, input_layer_size))
         self.V = np.random.uniform(-np.sqrt(1./state_layer_size),
@@ -127,14 +128,29 @@ class RNN:
         self.W = np.random.uniform(-np.sqrt(1./state_layer_size),
                                     np.sqrt(1./state_layer_size),
                                     (state_layer_size, state_layer_size))
+        """
+        self.U = np.eye(state_layer_size);
+        self.V = np.eye(state_layer_size);
+        
+        self.W = np.random.uniform(-np.sqrt(1./state_layer_size),
+                                    np.sqrt(1./state_layer_size),
+                                    (state_layer_size, state_layer_size))
+       
         self.state_bias = np.zeros((state_layer_size,1))
         self.output_bias = np.zeros((output_layer_size, 1))
-
+        
+        # B - Feedback weight matrix for all layers
+        self.B = np.random.uniform(-np.sqrt(1./state_layer_size),
+                                    np.sqrt(1./state_layer_size), 
+                                    (state_layer_size, input_layer_size))
 
         self.eta = eta
         self.verbose = verbose
         self.show_progress_bar = verbose > 0
 
+    def kernel_compute(t):
+        M = np.exp(-t)
+        return M
 
     def fit(self, X_train, y_train):
         """
@@ -158,10 +174,10 @@ class RNN:
         for epoch in range(self.epochs):
             for x, y in zip(X_train, y_train):
                 dLdU, dLdV, dLdW, dLdOb, dLdSb = self.gradient_function(x, y)
-                self.U -= eta * dLdU
-                self.V -= eta * dLdV
+                #self.U -= eta * dLdU
+                #self.V -= eta * dLdV
                 self.W -= eta * dLdW
-                self.output_bias -= dLdOb
+                #self.output_bias -= dLdOb
                 self.state_bias -= dLdSb
 
             if self.show_progress_bar:
@@ -211,9 +227,59 @@ class RNN:
                     Gradient for output layer bias
                 dLdSb:
                     Gradient for state layer bias
-            TODO - implement this
+        
+            Hyper Parameters:
+                K : Kernel
+                T : Timesteps after which the weights are updated
+            Learning Rule:
+                Take a Random Backward Weight Vector(B) in same direction as W and minimize the error
         """
-        raise NotImplementedError
+        T = len(y)
+        assert T == len(x)
+        
+        if self.bptt_truncate is None:
+            bptt_truncate = T
+        else:
+            bptt_truncate = self.bptt_truncate
+
+        o, s, s_linear, o_linear = self.forward_propagation(x)
+        #Initialize Random backward weights
+        dLdU = np.zeros(self.U.shape)
+        dLdV = np.zeros(self.V.shape)
+        dLdW = np.zeros(self.W.shape)
+
+        dLdOb = np.zeros(self.output_bias.shape)
+        dLdSb = np.zeros(self.state_bias.shape)
+
+        num_dU_additions = 0
+        num_dVdW_additions = 0
+
+        delta_o = o - y
+        for t in reversed(range(T)):
+            # Backprop the error at the output layer
+            e = delta_o[t]
+            o_linear_val = o_linear[t]
+            state_activation = s[t]
+
+            e = Convert1DTo2D(e)
+            o_linear_val = Convert1DTo2D(o_linear_val)
+            state_activation = Convert1DTo2D(state_activation)
+
+            kernel_sum = 0
+
+            # Backpropagation through time for at most bptt truncate steps
+            for t_prime in (range(t)):
+                k = kernel_compute(t - t_prime)
+                kernel_sum += k * x[t]
+            dLdW += e * kernel_sum * self.B # TODO fix this
+            num_dLdW_additions +=1
+        return [dLdU, 
+                dLdV, 
+                dLdW/num_dVdW_additions, 
+                dLdOb, 
+                dLdSb]
+
+       #raise NotImplementedError
 
     def bptt(self, x, y):
         """
@@ -256,6 +322,8 @@ class RNN:
         num_dVdW_additions = 0
 
         delta_o = o - y
+        print "Retention time is "
+        print delta_o
         for t in reversed(range(T)):
             # Backprop the error at the output layer
             g = delta_o[t]
