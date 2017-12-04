@@ -14,6 +14,12 @@ if __name__ == "__main__":
                         action='store',
                         help="Choose between \'bptt\' and \'modified\'")
 
+    parser.add_argument('mode',
+                        choices=['normal','compete'],
+                        action='store',
+                        default='normal',
+                        help='Either choose a learning rule or compare the gradients for different learning rules')
+
     parser.add_argument('--training_data_path',
                         type=str,
                         help='Path to pickled training data')
@@ -63,13 +69,12 @@ if __name__ == "__main__":
     if args.learning_rule == 'bptt':
         kernel = None
     elif args.learning_rule == 'modified':
-        # TODO - modify this later
         kernel = None
 
     input_layer_size = 2
     output_layer_size = input_layer_size
-
-    rnn = RNN(input_layer_size,
+    if args.mode == 'normal':
+        rnn = RNN(input_layer_size,
               args.state_layer_size, args.state_layer_activation,
               output_layer_size, args.output_layer_activation,
               epochs=args.epochs,
@@ -79,11 +84,32 @@ if __name__ == "__main__":
               eta=args.eta,
               rand=args.rand,
               verbose=args.verbose)
+    elif args.mode == 'compete':
+         rnn_bptt = RNN(input_layer_size,
+                    args.state_layer_size, args.state_layer_activation,
+                    output_layer_size, args.output_layer_activation,
+                    epochs=args.epochs,
+                    bptt_truncate = args.bptt_truncate,
+                    learning_rule = 'bptt',
+                    kernel = kernel,
+                    eta=args.eta,
+                    rand=args.rand,
+                    verbose=args.verbose)       
+         rnn_mlr =  RNN(input_layer_size,
+                    args.state_layer_size, args.state_layer_activation,
+                    output_layer_size, args.output_layer_activation,
+                    epochs=args.epochs,
+                    bptt_truncate = args.bptt_truncate,
+                    learning_rule = 'modified',
+                    kernel = kernel,
+                    eta=args.eta,
+                    rand=args.rand,
+                    verbose=args.verbose)  
 
     # TODO - dummy placeholder simulation below
     with open(args.training_data_path, 'rb') as f:
         print "training"
-        #trajectories = pickle.load(f)
+        trajectories = pickle.load(f)
     
     X = []
     Y = []
@@ -97,10 +123,15 @@ if __name__ == "__main__":
     print "Before training:"
     print "MSE:"
     print rnn.score(X, Y)
-
-    rnn.fit(X, Y)   
-    print "After training:"
-    print "MSE:"
-    print rnn.score(X, Y)
+    
+    if args.mode == 'normal':
+        rnn.fit(X, Y)   
+        print "After training:"
+        print "MSE:"
+        print rnn.score(X, Y)
+        print rnn.W
+    elif args.mode == 'compete':
+        rnn_bptt.fit(X,Y)
+        #rnn.score(
 
 

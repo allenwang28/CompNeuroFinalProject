@@ -63,7 +63,7 @@ class RNN:
                 Number of epochs for a single training sample.
 
             learning_rule(opt):
-                Choose between 'bptt' and 'modified'
+                Choose between 'bptt' and 'modified' 
 
             bptt_truncate(opt):
                 If left at None, back propagation through time will be applied for all time steps. 
@@ -150,7 +150,8 @@ class RNN:
 
 
     def kernel_compute(self,t):
-        M = np.exp(-t)
+        time_const = 1
+        M = np.exp(-t/time_const)
         return (M)
 
 
@@ -250,13 +251,11 @@ class RNN:
         dLdU = np.zeros(self.U.shape)
         dLdV = np.zeros(self.V.shape)
         dLdW = np.zeros(self.W.shape)
-
         dLdOb = np.zeros(self.output_bias.shape)
         dLdSb = np.zeros(self.state_bias.shape)
 
         num_dU_additions = 0
         num_dVdW_additions = 0
-
         delta_o = o - y
         for t in reversed(range(T)):
             # Backprop the error at the output layer
@@ -268,19 +267,19 @@ class RNN:
             o_linear_val = Convert1DTo2D(o_linear_val)
             state_activation = Convert1DTo2D(state_activation)
 
+            e = e * self.output_activation.dactivate(o_linear_val)
+            e = np.dot(self.V.T,e)
             kernel_sum = 0
-            num_dLdW_additions =0
 
             # Backpropagation through time for at most bptt truncate steps
-            for t_prime in (range(t)):
-                t_bar = t-t_prime
-                k = self.kernel_compute(t_bar)
+            for t_prime in (range(t+1)):
+                k = self.kernel_compute(t - t_prime)
                 kernel_sum += k * x[t]
-            dLdW += e * kernel_sum * self.B # TODO fix this
-            num_dLdW_additions +=1
+                dLdW += e * kernel_sum * self.B # TODO fix this
+                num_dVdW_additions +=1
         return [dLdU, 
                 dLdV, 
-                dLdW/num_dLdW_additions, 
+                dLdW/num_dVdW_additions, 
                 dLdOb, 
                 dLdSb]
 
