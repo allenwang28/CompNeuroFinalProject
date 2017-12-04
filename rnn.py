@@ -63,7 +63,7 @@ class RNN:
                 Number of epochs for a single training sample.
 
             learning_rule(opt):
-                Choose between 'bptt' and 'modified' 
+                Choose between 'bptt','fa' or 'modified' 
 
             bptt_truncate(opt):
                 If left at None, back propagation through time will be applied for all time steps. 
@@ -95,6 +95,8 @@ class RNN:
         
         if self.learning_rule == 'bptt':
             self.gradient_function = self.bptt
+        elif self.learning_rule == 'fa':
+            self.gradient_function = self.feedback_alignment
         elif self.learning_rule == 'modified':
             self.gradient_function = self.modified_learning_rule
         else:
@@ -284,6 +286,88 @@ class RNN:
                 dLdSb]
 
        #raise NotImplementedError
+
+    def feedback_alignment(self, x, y):
+        """
+            Output:
+                dLdU:
+                    Gradient for U matrix
+                dLdV:
+                    Gradient for V matrix
+                dLdW:
+                    Gradient for W matrix
+                dLdOb:
+                    Gradient for output layer bias
+                dLdSb:
+                    Gradient for state layer bias
+        """
+        # TODO - numpy likes to provide 1D matrices instead of 2D, and unfortunately
+        # we need 2D matrices. Therefore we have a lot of converting 1D to 2D matrices
+        # and we might want to clean that later somehow...
+
+        # TODO - also this can probably be cleaned more.
+
+        T = len(y)
+        assert T == len(x)
+        
+        if self.bptt_truncate is None:
+            bptt_truncate = T
+        else:
+            bptt_truncate = self.bptt_truncate
+
+        o, s, s_linear, o_linear = self.forward_propagation(x)
+
+        dLdU = np.zeros(self.U.shape)
+        dLdV = np.zeros(self.V.shape)
+        dLdW = np.zeros(self.W.shape)
+
+        dLdOb = np.zeros(self.output_bias.shape)
+        dLdSb = np.zeros(self.state_bias.shape)
+
+        num_dU_additions = 0
+        num_dVdW_additions = 0
+
+        delta_o = o - y
+        for t in reversed(range(T)):
+            # Backprop the error at the output layer
+            g = delta_o[t]
+            o_linear_val = o_linear[t]
+            state_activation = s[t]
+
+            g = Convert1DTo2D(g)
+            o_linear_val = Convert1DTo2D(o_linear_val)
+            state_activation = Convert1DTo2D(state_activation)
+
+            g = g * self.output_activation.dactivate(o_linear_val)
+            dLdV += np.dot(g, state_activation.T)
+            dLdOb += g
+            num_dU_additions += 1
+            g = np.dot(self.V.T, g)
+
+            # Backpropagation through time for at most bptt truncate steps
+            for bptt_step in reversed(range(max(0, t - bptt_truncate),  t + 1)):
+                state_linear = s_linear[bptt_step]
+                state_activation_prev = s[bptt_step - 1]
+                x_present = x[t]
+                
+                state_linear = Convert1DTo2D(state_linear)
+                state_activation_prev = Convert1DTo2D(state_activation_prev)
+                x_present = Convert1DTo2D(x_present)
+
+                g = g  * self.state_activation.dactivate(state_linear)
+                dLdW += np.dot(g, state_activation_prev.T)
+                dLdU += np.dot(g, x_present.T)
+                dLdSb += g
+                num_dVdW_additions += 1
+
+                g = g * np.dot(self.B.T, g)
+        return [dLdU/num_dU_additions, 
+                dLdV/num_dVdW_additions, 
+                dLdW/num_dVdW_additions, 
+                dLdOb/num_dU_additions, 
+                dLdSb/num_dVdW_additions]
+
+
 
     def bptt(self, x, y):
         """

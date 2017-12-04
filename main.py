@@ -10,9 +10,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('learning_rule', 
-                        choices=['modified', 'bptt'],                    
+                        choices=['modified', 'bptt', 'fa'],                    
                         action='store',
-                        help="Choose between \'bptt\' and \'modified\'")
+                        help="Choose between \'bptt\' \'fa\' and \'modified\'")
 
     parser.add_argument('mode',
                         choices=['normal','compete'],
@@ -67,6 +67,8 @@ if __name__ == "__main__":
     # TODO - add arguments for simulations
 
     if args.learning_rule == 'bptt':
+        kernel = None
+    elif args.learning_rule == 'fa':
         kernel = None
     elif args.learning_rule == 'modified':
         kernel = None
