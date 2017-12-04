@@ -82,7 +82,8 @@ if __name__ == "__main__":
 
     # TODO - dummy placeholder simulation below
     with open(args.training_data_path, 'rb') as f:
-      trajectories = pickle.load(f)
+        print "training"
+        #trajectories = pickle.load(f)
     
     X = []
     Y = []

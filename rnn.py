@@ -148,9 +148,12 @@ class RNN:
         self.verbose = verbose
         self.show_progress_bar = verbose > 0
 
-    def kernel_compute(t):
+
+    def kernel_compute(self,t):
         M = np.exp(-t)
-        return M
+        return (M)
+
+
 
     def fit(self, X_train, y_train):
         """
@@ -266,16 +269,18 @@ class RNN:
             state_activation = Convert1DTo2D(state_activation)
 
             kernel_sum = 0
+            num_dLdW_additions =0
 
             # Backpropagation through time for at most bptt truncate steps
             for t_prime in (range(t)):
-                k = kernel_compute(t - t_prime)
+                t_bar = t-t_prime
+                k = self.kernel_compute(t_bar)
                 kernel_sum += k * x[t]
             dLdW += e * kernel_sum * self.B # TODO fix this
             num_dLdW_additions +=1
         return [dLdU, 
                 dLdV, 
-                dLdW/num_dVdW_additions, 
+                dLdW/num_dLdW_additions, 
                 dLdOb, 
                 dLdSb]
 
@@ -322,8 +327,6 @@ class RNN:
         num_dVdW_additions = 0
 
         delta_o = o - y
-        print "Retention time is "
-        print delta_o
         for t in reversed(range(T)):
             # Backprop the error at the output layer
             g = delta_o[t]
