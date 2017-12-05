@@ -121,15 +121,17 @@ class RNN:
         # W - weight matrix from state layer to state layer.
         # V - weight matrix from state layer to output layer.
         """
-        self.U = np.eye(-np.sqrt(1./input_layer_size),
-                                    np.sqrt(1./input_layer_size), 
-                                    (state_layer_size, input_layer_size))
-        self.V = np.random.uniform(-np.sqrt(1./state_layer_size),
-                                    np.sqrt(1./state_layer_size),
-                                    (output_layer_size, state_layer_size))
-        self.W = np.random.uniform(-np.sqrt(1./state_layer_size),
-                                    np.sqrt(1./state_layer_size),
-                                    (state_layer_size, state_layer_size))
+        if self.learning_rule == 'bptt':
+            self.U = np.random.uniform(-np.sqrt(1./input_layer_size),
+                                        np.sqrt(1./input_layer_size), 
+                                        (state_layer_size, input_layer_size))
+            self.V = np.random.uniform(-np.sqrt(1./state_layer_size),
+                                        np.sqrt(1./state_layer_size),
+                                        (output_layer_size, state_layer_size))
+            self.W = np.random.uniform(-np.sqrt(1./state_layer_size),
+                                        np.sqrt(1./state_layer_size),
+                                        (state_layer_size, state_layer_size))
+            else:
         """
         self.U = np.eye(state_layer_size);
         self.V = np.eye(state_layer_size);
@@ -157,7 +159,6 @@ class RNN:
         return (M)
 
 
-
     def fit(self, X_train, y_train):
         """
         Notes:
@@ -180,14 +181,16 @@ class RNN:
         for epoch in range(self.epochs):
             for x, y in zip(X_train, y_train):
                 dLdU, dLdV, dLdW, dLdOb, dLdSb = self.gradient_function(x, y)
+                self.W -= eta * dLdW
                 #self.U -= eta * dLdU
                 #self.V -= eta * dLdV
-                self.W -= eta * dLdW
-                #self.output_bias -= dLdOb
-                self.state_bias -= dLdSb
+                self.state_bias -= eta * dLdSb
+                #self.output_bias -= eta * dLdOb
 
             if self.show_progress_bar:
                 bar.update(epoch)
+
+
 
     
     def forward_propagation(self, x):
@@ -276,8 +279,8 @@ class RNN:
             # Backpropagation through time for at most bptt truncate steps
             for t_prime in (range(t+1)):
                 k = self.kernel_compute(t - t_prime)
-                kernel_sum += k * x[t]
-                dLdW += e * kernel_sum * self.B # TODO fix this
+                kernel_sum += k * x[t] * o[t-1]
+                dLdW += e * kernel_sum * self.B
                 num_dVdW_additions +=1
         return [dLdU, 
                 dLdV, 
@@ -338,9 +341,6 @@ class RNN:
             o_linear_val = Convert1DTo2D(o_linear_val)
             state_activation = Convert1DTo2D(state_activation)
 
-            g = g * self.output_activation.dactivate(o_linear_val)
-            dLdV += np.dot(g, state_activation.T)
-            dLdOb += g
             num_dU_additions += 1
             g = np.dot(self.V.T, g)
 
@@ -356,7 +356,6 @@ class RNN:
 
                 g = g  * self.state_activation.dactivate(state_linear)
                 dLdW += np.dot(g, state_activation_prev.T)
-                dLdU += np.dot(g, x_present.T)
                 dLdSb += g
                 num_dVdW_additions += 1
 
