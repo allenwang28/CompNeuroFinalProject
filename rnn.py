@@ -259,8 +259,7 @@ class RNN:
         dLdOb = np.zeros(self.output_bias.shape)
         dLdSb = np.zeros(self.state_bias.shape)
 
-        num_dU_additions = 0
-        num_dVdW_additions = 0
+        num_dW_additions = 0
         delta_o = o - y
         for t in reversed(range(T)):
             # Backprop the error at the output layer
@@ -272,23 +271,21 @@ class RNN:
             o_linear_val = Convert1DTo2D(o_linear_val)
             state_activation = Convert1DTo2D(state_activation)
 
-            e = e * self.output_activation.dactivate(o_linear_val)
-            e = np.dot(self.V.T,e)
             kernel_sum = 0
 
             # Backpropagation through time for at most bptt truncate steps
             for t_prime in (range(t+1)):
-                k = self.kernel_compute(t - t_prime)
-                kernel_sum += k * x[t] * o[t-1]
-                dLdW += e * kernel_sum * self.B
-                num_dVdW_additions +=1
+                k = self.kernel_compute((t - t_prime)/float(t + 1))
+                kernel_sum += k * x[t_prime] * self.state_activation.dactivate(s_linear[t_prime-1])
+
+            kernel_sum = Convert1DTo2D(kernel_sum)
+            dLdW += np.dot(np.dot(self.B, e), kernel_sum.T)
+            num_dW_additions += 1
         return [dLdU, 
                 dLdV, 
-                dLdW/num_dVdW_additions, 
+                dLdW/num_dW_additions, 
                 dLdOb, 
                 dLdSb]
-
-       #raise NotImplementedError
 
     def feedback_alignment(self, x, y):
         """
