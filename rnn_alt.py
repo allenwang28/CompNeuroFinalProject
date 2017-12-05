@@ -34,7 +34,7 @@ class RNN:
                  bptt_truncate=None,
                  learning_rule='bptt',
                  tau=None,
-                 eta=0.001,
+                 eta=1e-5,
                  rand=None,
                  verbose=0):
         """
@@ -178,9 +178,11 @@ class RNN:
         eta = self.eta
 
         if self.show_progress_bar:
-            bar = ProgressBar(max_value = self.epochs)
+            bar = ProgressBar()
 
-        for epoch in range(self.epochs):
+        for epoch in bar(range(self.epochs)):
+            if self.convolutions is not None:
+              self.convolutions *= 0.
             for x, y in zip(X_train, y_train):
                 dLdU, dLdV, dLdW, dLdOb, dLdSb = self.gradient_function(x, y)
                 #self.U -= eta * dLdU
@@ -188,9 +190,6 @@ class RNN:
                 self.W -= eta * dLdW
                 #self.output_bias -= dLdOb
                 self.state_bias -= dLdSb
-
-            if self.show_progress_bar:
-                bar.update(epoch)
 
     
     def forward_propagation(self, x):
@@ -221,7 +220,9 @@ class RNN:
             output_linear = np.dot(self.V, s[t]) + output_bias
             o[t] = self.output_activation.activate(output_linear)
             o_linear[t] = output_linear
-            if self.convolutions:
+            if self.convolutions is not None:
+              if all(self.convolutions == 0):
+                self.convolutions = s[t]
               self.convolutions = (1 - 1/self.tau) * self.convolutions + 1/self.tau * s[t]
         return (o, s, s_linear, o_linear)
 
@@ -276,8 +277,8 @@ class RNN:
 
             e = e * self.output_activation.dactivate(o_linear_val)
             e = np.dot(self.V.T,e)
-            kernel_sum = 0
 
+            #kernel_sum = 0
             # Backpropagation through time for at most bptt truncate steps
             #for t_prime in (range(t+1)):
             #    k = self.kernel_compute(t - t_prime)
@@ -285,8 +286,8 @@ class RNN:
             #    dLdW += e * kernel_sum * self.B # TODO fix this
             #    num_dVdW_additions +=1
             
-            assert self.convolutions
-            dLdW += self.B.dot(e).dot(Convert1Dto2D(self.convolutions).T)
+            assert self.convolutions is not None
+            dLdW += self.B.dot(e).dot(Convert1DTo2D(self.convolutions).T)
         return [dLdU, 
                 dLdV, 
                 dLdW/T, 
