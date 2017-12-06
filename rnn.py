@@ -492,7 +492,7 @@ if __name__ == "__main__":
     output_layer_activation = 'linear'
 
     rnn = RNN(input_size, state_layer_size, state_layer_activation, 
-              output_size, output_layer_activation, eta = 0.005, epochs=1000, verbose=1)
+              output_size, output_layer_activation, eta = 0.001, epochs=1000, verbose=1)
 
     X_train = [x]
     y_train = [y]

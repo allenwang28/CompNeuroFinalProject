@@ -1,3 +1,4 @@
-python main.py bptt normal --training_data_path 1trajectories_250steps_noseed.pkl
-python main.py fa normal --training_data_path 1trajectories_250steps_noseed.pkl
-python main.py modified normal --training_data_path 1trajectories_250steps_noseed.pkl
+python main.py bptt normal --training_data_path 1trajectories_250steps_noseed.pkl --epochs 10000
+python main.py fa normal --training_data_path 1trajectories_250steps_noseed.pkl --epochs 10000
+python main.py modified normal --training_data_path 1trajectories_250steps_noseed.pkl --epochs 10000
+
