@@ -86,5 +86,5 @@ if __name__=='__main__':
   trajectories = [generate_trajectory(space, args.n_steps) for _ in range(args.n_trajectories)]
   fname = '{}trajectories_{}steps_{}seed.pkl'.format(args.n_trajectories, args.n_steps, args.seed if args.seed else 'no')
   with open(fname, 'wb') as f:
-    pickle.dump(trajectories, f)
+    pickle.dump(trajectories, f, protocol=2)
 
