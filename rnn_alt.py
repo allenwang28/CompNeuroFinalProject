@@ -181,6 +181,7 @@ class RNN:
             bar = ProgressBar()
 
         for epoch in bar(range(self.epochs)):
+            print 'epoch {}'.format(epoch)
             if self.convolutions is not None:
               self.convolutions *= 0.
             for x, y in zip(X_train, y_train):
