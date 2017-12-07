@@ -36,6 +36,11 @@ if __name__ == "__main__":
                         help='Truncation for BPTT - Not providing this means there is no truncation')
 
     parser.add_argument('--kernel', help='TODO')
+    parser.add_argument('--tau', type=float,
+                        default=10000.)
+
+    parser.add_argument('--validation_size', type=float,
+                        default=0.3)
 
 
     parser.add_argument('--state_layer_activation',
@@ -68,15 +73,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # TODO - add arguments for simulations
-
-    if args.learning_rule == 'bptt':
-        kernel = None
-    elif args.learning_rule == 'fa':
-        kernel = None
-    elif args.learning_rule == 'modified':
-        kernel = None
-
     input_layer_size = 2
     output_layer_size = input_layer_size
     if args.mode == 'normal':
@@ -86,7 +82,7 @@ if __name__ == "__main__":
               epochs=args.epochs,
               bptt_truncate = args.bptt_truncate,
               learning_rule = args.learning_rule,
-              kernel = kernel,
+              tau = args.tau,
               eta=args.eta,
               rand=args.rand,
               verbose=args.verbose)
@@ -136,9 +132,10 @@ if __name__ == "__main__":
             Y.append(y)
 
     if args.mode == 'normal':
-        training_losses, validation_losses = rnn.fit(X, Y)   
+        training_losses, validation_losses = rnn.fit(X, Y, validation_size=args.validation_size)   
         plt.plot(range(args.epochs),training_losses, label='Training Loss')
         plt.plot(range(args.epochs),validation_losses, label='Validation Loss')
+        plt.title("Training and validation losses for {0}".format(args.learning_rule))
         plt.legend()
         plt.show()
     elif args.mode == 'compete':

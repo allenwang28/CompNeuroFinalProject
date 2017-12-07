@@ -34,7 +34,7 @@ class RNN:
                  epochs = 100,
                  bptt_truncate=None,
                  learning_rule='bptt',
-                 kernel=None,
+                 tau=None,
                  eta=0.001,
                  rand=None,
                  verbose=0):
@@ -115,7 +115,7 @@ class RNN:
 
         self.epochs = epochs
 
-        self.kernel = kernel
+        self.tau = tau
         self.bptt_truncate = bptt_truncate
     
         # U - weight matrix from input into state layer.
@@ -155,9 +155,7 @@ class RNN:
 
 
     def kernel_compute(self,t):
-        Tau = 100000.
-        M = np.exp(-t/Tau)
-        return (M)
+        return np.exp(-t/self.tau)
 
 
     def fit(self, X, y, validation_size=0.1):
@@ -180,8 +178,8 @@ class RNN:
         y = np.array(y)
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=validation_size)
         if self.verbose:
-            print "Validation size: {0}"
-            print "Training on {0} samples"
+            print "Validation size: {0}".format(validation_size)
+            print "Training on {0} samples".format((1 - validation_size) * len(X_train))
 
         training_losses = []
         validation_losses = []
@@ -284,7 +282,7 @@ class RNN:
         delta_o = o - y
 
         for t in reversed(range(T)):
-            # Backprop the error at the output layer
+            # Get the error at the output layer
             e = delta_o[t]
             o_linear_val = o_linear[t]
 
@@ -298,7 +296,7 @@ class RNN:
                 state_activation = s[t_prime]
 
                 k = self.kernel_compute(t - t_prime)
-                kernel_sum += k * state_activation
+                kernel_sum += k * state_activation 
 
             kernel_sum = Convert1DTo2D(kernel_sum)
             dLdW += np.dot(np.dot(self.B, e), kernel_sum.T)
