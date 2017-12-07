@@ -1,6 +1,6 @@
 import numpy as np
 
-from rnn import RNN
+from rnn_alt import RNN
 import activation
 
 import argparse
@@ -10,7 +10,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('learning_rule', 
-                        choices=['modified', 'bptt', 'fa'],                    
+                        choices=['modified_alt', 'modified', 'bptt', 'fa'],                    
                         action='store',
                         help="Choose between \'bptt\' \'fa\' and \'modified\'")
 
@@ -24,15 +24,14 @@ if __name__ == "__main__":
                         type=str,
                         help='Path to pickled training data')
 
+    parser.add_argument('--tau', type=float, help='tau to use in modified_alt')
+
     # Optional args
     parser.add_argument('--bptt_truncate',
                         type=int,
                         action='store',
                         default=None,
                         help='Truncation for BPTT - Not providing this means there is no truncation')
-
-    parser.add_argument('--kernel', help='TODO')
-
 
     parser.add_argument('--state_layer_activation',
                         choices=activation.activation_choices,
@@ -82,7 +81,7 @@ if __name__ == "__main__":
               epochs=args.epochs,
               bptt_truncate = args.bptt_truncate,
               learning_rule = args.learning_rule,
-              kernel = kernel,
+              tau = args.tau,
               eta=args.eta,
               rand=args.rand,
               verbose=args.verbose)
@@ -93,7 +92,7 @@ if __name__ == "__main__":
                     epochs=args.epochs,
                     bptt_truncate = args.bptt_truncate,
                     learning_rule = 'bptt',
-                    kernel = kernel,
+                    tau = args.tau,
                     eta=args.eta,
                     rand=args.rand,
                     verbose=args.verbose)       
@@ -103,7 +102,7 @@ if __name__ == "__main__":
                     epochs=args.epochs,
                     bptt_truncate = args.bptt_truncate,
                     learning_rule = 'modified',
-                    kernel = kernel,
+                    tau = args.tau,
                     eta=args.eta,
                     rand=args.rand,
                     verbose=args.verbose)  
@@ -113,14 +112,20 @@ if __name__ == "__main__":
     with open(args.training_data_path, 'rb') as f:
         print "training"
         trajectories = pickle.load(f)
-    X = []
-    Y = []
-    for i in range(10):
-        x = np.random.normal(0, 1, (5,2))
-        y = x / 10.
+    
+    if trajectories:
+        X = np.array(trajectories[:-1])/600 - 1/2
+        Y = np.array(trajectories[1:])/600  - 1/2
 
-        X.append(x)
-        Y.append(y)
+    else:
+        X = []
+        Y = []
+        for i in range(10):
+            x = np.random.normal(0, 1, (5,2))
+            y = x / 10.
+
+            X.append(x)
+            Y.append(y)
 
     print "Before training:"
     print "MSE:"
@@ -135,5 +140,4 @@ if __name__ == "__main__":
     elif args.mode == 'compete':
         rnn_bptt.fit(X,Y)
         #rnn.score(
-
 
