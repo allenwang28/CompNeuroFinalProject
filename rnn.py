@@ -43,50 +43,35 @@ class RNN:
             U - weight matrix from input into hidden layer.
             W - weight matrix from hidden layer to hidden layer.
             V - weight matrix from hidden layer to output layer.
-
         Inputs:
             input_size:
                 Size of the input vector. We expect a 2D numpy array, so this should be X.shape[1]
-
             state_layer_size:
                 State layer size.
-
             state_layer_activation:
                 A string. Refer to activation.py
-
             output_size:
                 Size of the output vector. We expect a 2D numpy array, so this should be Y.shape[1]
-
             output_layer_activation:
                 A string. Refer to activation.py
-
             epochs(opt):
                 Number of epochs for a single training sample.
-
             learning_rule(opt):
                 Choose between 'bptt','fa' or 'modified' 
-
             bptt_truncate(opt):
                 If left at None, back propagation through time will be applied for all time steps. 
-
                 Otherwise, a value for bptt_truncate means that 
                 bptt will only be applied for at most bptt_truncate steps.
-
                 Only considered when learning_rule == 'bptt'
-
             kernel(opt):
                 # TODO - fill this
                 Only considered when learning_rule == 'modified'
-
             eta (opt):
                 Learning rate. Initialized to 0.001.
-
             rand (opt):
                 Random seed. Initialized to None (no random seed).
-
             verbose (opt):
                 Verbosity: levels 0 - 2
-
         Outputs:
             None
         """
@@ -161,14 +146,11 @@ class RNN:
     def fit(self, X, y, validation_size=0.1):
         """
         Notes:
-
         Inputs:
             X_train:
                 Training inputs. Expect a list with numpy arrays of size (input_layer_size, N) where N is the number of samples.
-
             Y_train:
                 Training outputs. Expect a list with numpy arrays of size (output_layer_size, N) where N is the number of samples.
-
         Outputs:
             None
         """
@@ -185,6 +167,7 @@ class RNN:
         validation_losses = []
         # Non-online 
         if self.show_progress_bar:
+            print len(X_train)
             bar = ProgressBar(max_value = len(X_train))
         for epoch in range(self.epochs):
             for i, (x, y) in enumerate(zip(X_train, y_train)):
@@ -292,20 +275,23 @@ class RNN:
             kernel_sum = 0
 
             # Backpropagation through time for at most bptt truncate steps
+            #for t_prime in (range(max(0,t-50),t+1)):
             for t_prime in (range(t+1)):
                 state_activation = s[t_prime]
 
-                k = self.kernel_compute(t - t_prime)
+                k = self.kernel_compute(t  - t_prime)
                 kernel_sum += k * state_activation 
 
+            kernel_sum = kernel_sum/(t+1)
             kernel_sum = Convert1DTo2D(kernel_sum)
             dLdW += np.dot(np.dot(self.B, e), kernel_sum.T)
+            dLdSb += np.dot(self.B,e)
             num_dW_additions += 1
         return [dLdU, 
                 dLdV, 
                 dLdW/num_dW_additions, 
                 dLdOb, 
-                dLdSb]
+                dLdSb/num_dW_additions]
 
     def feedback_alignment(self, x, y):
         """
@@ -404,9 +390,7 @@ class RNN:
         # TODO - numpy likes to provide 1D matrices instead of 2D, and unfortunately
         # we need 2D matrices. Therefore we have a lot of converting 1D to 2D matrices
         # and we might want to clean that later somehow...
-
         # TODO - also this can probably be cleaned more.
-
         t = len(y)
         assert t == len(x)
         
@@ -414,36 +398,27 @@ class RNN:
             bptt_truncate = t
         else:
             bptt_truncate = self.bptt_truncate
-
         o, s, s_linear, o_linear = self.forward_propagation(x)
-
         dLdU = np.zeros(self.U.shape)
         dLdV = np.zeros(self.V.shape)
         dLdW = np.zeros(self.W.shape)
-
         dLdOb = np.zeros(self.output_bias.shape)
         dLdSb = np.zeros(self.state_bias.shape)
-
         num_dU_additions = 0
         num_dVdW_additions = 0
-
         delta_o = o - y
-
         # Backprop the error at the output layer
         g = delta_o[t - 1]
         o_linear_val = o_linear[t - 1]
         state_activation = s[t - 1]
-
         g = Convert1DTo2D(g)
         o_linear_val = Convert1DTo2D(o_linear_val)
         state_activation = Convert1DTo2D(state_activation)
-
         g = g * self.output_activation.dactivate(o_linear_val)
         dLdV += np.dot(g, state_activation.T)
         dLdOb += g
         num_dU_additions += 1
         g = np.dot(self.V.T, g)
-
         # Backpropagation through time for at most bptt truncate steps
         for bptt_step in reversed(range(max(0, t - bptt_truncate),  t + 1)):
             state_linear = s_linear[bptt_step]
@@ -453,13 +428,11 @@ class RNN:
             state_linear = Convert1DTo2D(state_linear)
             state_activation_prev = Convert1DTo2D(state_activation_prev)
             x_present = Convert1DTo2D(x_present)
-
             g = g  * self.state_activation.dactivate(state_linear)
             dLdW += np.dot(g, state_activation_prev.T)
             dLdU += np.dot(g, x_present.T)
             dLdSb += g
             num_dVdW_additions += 1
-
             g = g * np.dot(self.W.T, g)
         return [dLdU/num_dU_additions, 
                 dLdV/num_dVdW_additions, 
@@ -542,7 +515,6 @@ class RNN:
         Inputs:
             X:
                 Training inputs. Expect a list with numpy arrays of size (input_layer_size, N) where N is the number of samples.
-
         Outputs:
             predictions
         """
@@ -557,10 +529,8 @@ class RNN:
         Inputs:
             X:
                 Training inputs. Expect a list with numpy arrays of size (input_layer_size, N) where N is the number of samples.
-
             Y:
                 Training outputs. Expect a list with numpy arrays of size (output_layer_size, N) where N is the number of samples.
-
         Outputs:
             MSE  
         """
@@ -589,11 +559,7 @@ if __name__ == "__main__":
     output_layer_activation = 'linear'
 
     rnn = RNN(input_size, state_layer_size, state_layer_activation, 
-<<<<<<< HEAD
-              output_size, output_layer_activation, eta = 0.001, epochs=1000, verbose=1)
-=======
               output_size, output_layer_activation, eta = 0.1, epochs=1000, verbose=1)
->>>>>>> bee769b28cab3e7f29660dce8a12e19425e36bf2
 
     #o, s, _, _ = rnn.forward_propagation()
     print "Before training:"
@@ -610,4 +576,3 @@ if __name__ == "__main__":
     #print o
     print "MSE:"
     print rnn.score(X_train, y_train)
-
