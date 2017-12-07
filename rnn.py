@@ -64,7 +64,7 @@ class RNN:
                 Number of epochs for a single training sample.
 
             learning_rule(opt):
-                Choose between 'bptt','fa' or 'modified' 
+                Choose between 'bptt','fa', 'dfa' or 'modified' 
 
             bptt_truncate(opt):
                 If left at None, back propagation through time will be applied for all time steps. 
@@ -98,6 +98,8 @@ class RNN:
             self.gradient_function = self.bptt
         elif self.learning_rule == 'fa':
             self.gradient_function = self.feedback_alignment
+        elif self.learning_rule == 'dfa':
+            self.gradient_function = self.direct_feedback_alignment
         elif self.learning_rule == 'modified':
             self.gradient_function = self.modified_learning_rule
         else:
@@ -145,9 +147,12 @@ class RNN:
         self.output_bias = np.zeros((output_layer_size, 1))
         
         # B - Feedback weight matrix for all layers
+        """
         self.B = np.random.uniform(-np.sqrt(1./state_layer_size),
                                     np.sqrt(1./state_layer_size), 
                                     (state_layer_size, input_layer_size))
+                                    """
+        self.B = self.W.copy()
 
         self.eta = eta
         self.verbose = verbose
@@ -179,7 +184,7 @@ class RNN:
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=validation_size)
         if self.verbose:
             print "Validation size: {0}".format(validation_size)
-            print "Training on {0} samples".format((1 - validation_size) * len(X_train))
+            print "Training on {0} samples".format(len(X_train))
 
         training_losses = []
         validation_losses = []
@@ -192,7 +197,7 @@ class RNN:
                 self.W -= eta * dLdW
                 #self.U -= eta * dLdU
                 #self.V -= eta * dLdV
-                self.state_bias -= eta * dLdSb
+                #self.state_bias -= eta * dLdSb
                 #self.output_bias -= eta * dLdOb
                 if self.show_progress_bar:
                     bar.update(i)
@@ -294,9 +299,10 @@ class RNN:
             # Backpropagation through time for at most bptt truncate steps
             for t_prime in (range(t+1)):
                 state_activation = s[t_prime]
+                state_linear = s_linear[t_prime - 1]
 
                 k = self.kernel_compute(t - t_prime)
-                kernel_sum += k * state_activation 
+                kernel_sum += k * state_activation * self.state_activation.dactivate(state_linear)
 
             kernel_sum = Convert1DTo2D(kernel_sum)
             dLdW += np.dot(np.dot(self.B, e), kernel_sum.T)
@@ -306,6 +312,67 @@ class RNN:
                 dLdW/num_dW_additions, 
                 dLdOb, 
                 dLdSb]
+
+    def direct_feedback_alignment(self, x, y):
+        """
+            Output:
+                dLdU:
+                    Gradient for U matrix
+                dLdV:
+                    Gradient for V matrix
+                dLdW:
+                    Gradient for W matrix
+                dLdOb:
+                    Gradient for output layer bias
+                dLdSb:
+                    Gradient for state layer bias
+        """
+        T = len(y)
+        assert T == len(x)
+        
+        if self.bptt_truncate is None:
+            bptt_truncate = T
+        else:
+            bptt_truncate = self.bptt_truncate
+
+        o, s, s_linear, o_linear = self.forward_propagation(x)
+
+        dLdU = np.zeros(self.U.shape)
+        dLdV = np.zeros(self.V.shape)
+        dLdW = np.zeros(self.W.shape)
+
+        dLdOb = np.zeros(self.output_bias.shape)
+        dLdSb = np.zeros(self.state_bias.shape)
+
+        num_dU_additions = 0
+        num_dVdW_additions = 0
+
+        delta_o = o - y
+        for t in reversed(range(T)):
+            # Backprop the error at the output layer
+            g = delta_o[t]
+            if t == 0:
+                s_linear_prev = s_linear[t - 1]
+            else:
+                s_linear_prev = 0
+            state_activation = s[t]
+
+            g = Convert1DTo2D(g)
+            o_linear_val = Convert1DTo2D(o_linear_val)
+            state_activation = Convert1DTo2D(state_activation)
+
+            g = g * self.state_activation.dactivate(s_linear_prev)
+
+            dLdW += np.dot(self.B.T, g)
+            num_dVdW_additions += 1
+
+        return [dLdU/num_dU_additions, 
+                dLdV/num_dVdW_additions, 
+                dLdW/num_dVdW_additions, 
+                dLdOb/num_dU_additions, 
+                dLdSb/num_dVdW_additions]
+
+
 
     def feedback_alignment(self, x, y):
         """
@@ -321,12 +388,6 @@ class RNN:
                 dLdSb:
                     Gradient for state layer bias
         """
-        # TODO - numpy likes to provide 1D matrices instead of 2D, and unfortunately
-        # we need 2D matrices. Therefore we have a lot of converting 1D to 2D matrices
-        # and we might want to clean that later somehow...
-
-        # TODO - also this can probably be cleaned more.
-
         T = len(y)
         assert T == len(x)
         
@@ -359,7 +420,6 @@ class RNN:
             state_activation = Convert1DTo2D(state_activation)
 
             num_dU_additions += 1
-            g = np.dot(self.V.T, g)
 
             # Backpropagation through time for at most bptt truncate steps
             for bptt_step in reversed(range(max(0, t - bptt_truncate),  t + 1)):
@@ -376,7 +436,7 @@ class RNN:
                 dLdSb += g
                 num_dVdW_additions += 1
 
-                g = g * np.dot(self.W.T, g)
+                g = np.dot(self.B.T,g)
         return [dLdU/num_dU_additions, 
                 dLdV/num_dVdW_additions, 
                 dLdW/num_dVdW_additions, 

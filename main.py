@@ -13,9 +13,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('learning_rule', 
-                        choices=['modified', 'bptt', 'fa'],                    
+                        choices=['modified', 'bptt', 'fa', 'dfa'],                    
                         action='store',
-                        help="Choose between \'bptt\' \'fa\' and \'modified\'")
+                        help="Choose between \'bptt\' \'fa\' \'dfa\' and \'modified\'")
 
     parser.add_argument('--mode',
                         choices=['normal','compete'],
