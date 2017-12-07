@@ -18,7 +18,7 @@ def cli_args():
   parser = argparse.ArgumentParser()
   parser.add_argument('--seed', type=int, default=None, help='random number generator seed')
   parser.add_argument('--n_trajectories', type=int, default=1, help='number of trajectories to simulate')
-  parser.add_argument('--n_steps', type=int, default=250, help='number of time steps to simulate for')
+  parser.add_argument('--n_steps', type=int, default=20, help='number of time steps to simulate for')
   parser.add_argument('--dt', type=float, default=1./60., help='simulation step size')
   parser.add_argument('--ball_pos', type=int, nargs=2, default=None, help='ball initial position (randomly generated if not supplied)')
   parser.add_argument('--ball_vel', type=float, nargs=2, default=None, help='ball initial velocity (randomly generated if not supplied)')

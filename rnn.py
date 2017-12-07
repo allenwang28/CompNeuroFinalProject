@@ -3,6 +3,7 @@ import numpy as np
 from progressbar import ProgressBar
 
 from activation import Activation
+from sklearn.model_selection import train_test_split
 
 # https://github.com/dennybritz/rnn-tutorial-rnnlm/blob/master/RNNLM.ipynb
 # for reference.
@@ -154,12 +155,12 @@ class RNN:
 
 
     def kernel_compute(self,t):
-        time_const = 1
-        M = np.exp(-t/time_const)
+        Tau = 100000.
+        M = np.exp(-t/Tau)
         return (M)
 
 
-    def fit(self, X_train, y_train):
+    def fit(self, X, y, validation_size=0.1):
         """
         Notes:
 
@@ -175,42 +176,43 @@ class RNN:
         """
         eta = self.eta
 
-        if self.show_progress_bar:
-            bar = ProgressBar(max_value = self.epochs)
+        X = np.array(X)
+        y = np.array(y)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=validation_size)
+        if self.verbose:
+            print "Validation size: {0}"
+            print "Training on {0} samples"
 
-        # online learning
-        for epoch in range(self.epochs):
-            for x_trajectory, y_trajectory in zip(X_train, y_train):
-                x_past = []
-                y_past = []
-                for x, y in zip(x_trajectory, y_trajectory):
-                    x_past.append(x)
-                    y_past.append(y)
-                    dLdU, dLdV, dLdW, dLdOb, dLdSb = self.gradient_function(np.array(x_past), np.array(y_past))
-                    self.W -= eta * dLdW
-                    #self.U -= eta * dLdU
-                    #self.V -= eta * dLdV
-                    self.state_bias -= eta * dLdSb
-                    #self.output_bias -= eta * dLdOb
-
-
+        training_losses = []
+        validation_losses = []
         # Non-online 
-        """
+        if self.show_progress_bar:
+            bar = ProgressBar(max_value = len(X_train))
         for epoch in range(self.epochs):
-            for x, y in zip(X_train, y_train):
+            for i, (x, y) in enumerate(zip(X_train, y_train)):
                 dLdU, dLdV, dLdW, dLdOb, dLdSb = self.gradient_function(x, y)
                 self.W -= eta * dLdW
                 #self.U -= eta * dLdU
                 #self.V -= eta * dLdV
                 self.state_bias -= eta * dLdSb
                 #self.output_bias -= eta * dLdOb
-
+                if self.show_progress_bar:
+                    bar.update(i)
             if self.show_progress_bar:
-                bar.update(epoch)
-        """
+                bar.update(0)
+            training_loss = self.score(X_train, y_train)
+            validation_loss = self.score(X_test, y_test)
+            training_losses.append(training_loss)
+            validation_losses.append(validation_loss)
+            if self.verbose == 2:
+                print "--------"
+                print "Epoch {0}/{1}".format(epoch, self.epochs)
+                print "Training loss: {0}".format(training_loss)
+                print "Validation loss: {0}".format(validation_loss)
+                print "--------"
 
 
-
+        return training_losses, validation_losses
     
     def forward_propagation(self, x):
         """
@@ -280,22 +282,23 @@ class RNN:
 
         num_dW_additions = 0
         delta_o = o - y
+
         for t in reversed(range(T)):
             # Backprop the error at the output layer
             e = delta_o[t]
             o_linear_val = o_linear[t]
-            state_activation = s[t]
 
             e = Convert1DTo2D(e)
             o_linear_val = Convert1DTo2D(o_linear_val)
-            state_activation = Convert1DTo2D(state_activation)
 
             kernel_sum = 0
 
             # Backpropagation through time for at most bptt truncate steps
             for t_prime in (range(t+1)):
-                k = self.kernel_compute((t - t_prime)/float(t + 1))
-                kernel_sum += k * x[t_prime] * self.state_activation.dactivate(s_linear[t_prime-1])
+                state_activation = s[t_prime]
+
+                k = self.kernel_compute(t - t_prime)
+                kernel_sum += k * state_activation
 
             kernel_sum = Convert1DTo2D(kernel_sum)
             dLdW += np.dot(np.dot(self.B, e), kernel_sum.T)
@@ -385,7 +388,7 @@ class RNN:
 
         
     # online version
-    def bptt(self, x, y):
+    #def bptt(self, x, y):
         """
             Output:
                 dLdU:
@@ -398,6 +401,7 @@ class RNN:
                     Gradient for output layer bias
                 dLdSb:
                     Gradient for state layer bias
+        """
         """
         # TODO - numpy likes to provide 1D matrices instead of 2D, and unfortunately
         # we need 2D matrices. Therefore we have a lot of converting 1D to 2D matrices
@@ -464,9 +468,9 @@ class RNN:
                 dLdW/num_dVdW_additions, 
                 dLdOb/num_dU_additions, 
                 dLdSb/num_dVdW_additions]
-
-
     """
+
+
     # Non-online version
     def bptt(self, x, y):
         # TODO - numpy likes to provide 1D matrices instead of 2D, and unfortunately
@@ -534,7 +538,6 @@ class RNN:
                 dLdW/num_dVdW_additions, 
                 dLdOb/num_dU_additions, 
                 dLdSb/num_dVdW_additions]
-    """
 
     def predict(self, X):
         """
