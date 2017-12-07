@@ -6,6 +6,9 @@ import activation
 import argparse
 import pickle
 
+import os
+import matplotlib.pyplot as plt
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
@@ -14,13 +17,14 @@ if __name__ == "__main__":
                         action='store',
                         help="Choose between \'bptt\' \'fa\' and \'modified\'")
 
-    parser.add_argument('mode',
+    parser.add_argument('--mode',
                         choices=['normal','compete'],
                         action='store',
                         default='normal',
                         help='Either choose a learning rule or compare the gradients for different learning rules')
 
     parser.add_argument('--training_data_path',
+                        default='none',
                         type=str,
                         help='Path to pickled training data')
 
@@ -32,6 +36,11 @@ if __name__ == "__main__":
                         help='Truncation for BPTT - Not providing this means there is no truncation')
 
     parser.add_argument('--kernel', help='TODO')
+    parser.add_argument('--tau', type=float,
+                        default=10000.)
+
+    parser.add_argument('--validation_size', type=float,
+                        default=0.3)
 
 
     parser.add_argument('--state_layer_activation',
@@ -64,15 +73,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # TODO - add arguments for simulations
-
-    if args.learning_rule == 'bptt':
-        kernel = None
-    elif args.learning_rule == 'fa':
-        kernel = None
-    elif args.learning_rule == 'modified':
-        kernel = None
-
     input_layer_size = 2
     output_layer_size = input_layer_size
     if args.mode == 'normal':
@@ -82,7 +82,7 @@ if __name__ == "__main__":
               epochs=args.epochs,
               bptt_truncate = args.bptt_truncate,
               learning_rule = args.learning_rule,
-              kernel = kernel,
+              tau = args.tau,
               eta=args.eta,
               rand=args.rand,
               verbose=args.verbose)
@@ -110,30 +110,35 @@ if __name__ == "__main__":
 
     # TODO - dummy placeholder simulation below
     trajectories = None
-    with open(args.training_data_path, 'rb') as f:
-        print "training"
-        trajectories = pickle.load(f)
-    X = []
-    Y = []
-    for i in range(10):
-        x = np.random.normal(0, 1, (5,2))
-        y = x / 10.
+    if os.path.exists(args.training_data_path):
+        with open(args.training_data_path, 'rb') as f:
+            print "training"
+            trajectories = pickle.load(f)
+            if not trajectories:
+                raise Exception('Invalid pkl file')
+            X = []
+            Y = []
+            for trajectory in trajectories:
+                X.append(np.array(trajectory[:-1])/600 - 0.5)
+                Y.append(np.array(trajectory[1:])/600 - 0.5)
+    else:
+        X = []
+        Y = []
+        for i in range(10):
+            x = np.random.normal(0, 1, (5,2))
+            y = x / 10.
 
-        X.append(x)
-        Y.append(y)
+            X.append(x)
+            Y.append(y)
 
-    print "Before training:"
-    print "MSE:"
-    print rnn.score(X, Y)
-    
     if args.mode == 'normal':
-        rnn.fit(X, Y)   
-        print "After training:"
-        print "MSE:"
-        print rnn.score(X, Y)
-        print rnn.W
+        training_losses, validation_losses = rnn.fit(X, Y, validation_size=args.validation_size)   
+        plt.plot(range(args.epochs),training_losses, label='Training Loss')
+        plt.plot(range(args.epochs),validation_losses, label='Validation Loss')
+        plt.title("Training and validation losses for {0}".format(args.learning_rule))
+        plt.legend()
+        plt.show()
     elif args.mode == 'compete':
-        rnn_bptt.fit(X,Y)
-        #rnn.score(
+        training_losses, validation_losses = rnn_bptt.fit(X,Y)
 
 
