@@ -5,6 +5,9 @@ from progressbar import ProgressBar
 from activation import Activation
 from sklearn.model_selection import train_test_split
 
+
+from scipy.linalg import eig
+
 # https://github.com/dennybritz/rnn-tutorial-rnnlm/blob/master/RNNLM.ipynb
 # for reference.
 
@@ -128,6 +131,9 @@ class RNN:
         self.W = np.random.uniform(-np.sqrt(1./state_layer_size),
                                     np.sqrt(1./state_layer_size),
                                     (state_layer_size, state_layer_size))
+        # see if W matrix randomization is the cause
+        self.W = -np.array([[0.51940038, -0.57702151],[0.64065148, 0.31259335]])
+        #self.W = np.array([[0.51940038, -0.57702151],[0.64065148, 0.31259335]])
        
         self.state_bias = np.zeros((state_layer_size,1))
         self.output_bias = np.zeros((output_layer_size, 1))
@@ -138,7 +144,7 @@ class RNN:
                                     np.sqrt(1./state_layer_size), 
                                     (state_layer_size, input_layer_size))
                                     """
-        self.B = self.W.copy()
+        self.B = self.W.copy().T
 
         self.eta = eta
         self.verbose = verbose
@@ -147,6 +153,22 @@ class RNN:
 
     def kernel_compute(self,t):
         return np.exp(-t/self.tau)
+
+
+    def eWBe(self, x, y):
+        o, s, s_linear, o_linear = self.forward_propagation(x)
+
+        delta_o = o - y
+        T = len(x)
+
+        eWBe = []
+
+        for t in reversed(range(T)):
+            e = delta_o[t]
+            eWBe.append(np.dot(np.dot(np.dot(e.T, self.W), self.B), e))
+
+        return eWBe
+
 
 
     def fit(self, X, y, validation_size=0.1):
@@ -173,16 +195,17 @@ class RNN:
         validation_losses = []
         # Non-online 
         if self.show_progress_bar:
-            print len(X_train)
             bar = ProgressBar(max_value = len(X_train))
         for epoch in range(self.epochs):
+            eWBe = []
             for i, (x, y) in enumerate(zip(X_train, y_train)):
                 dLdU, dLdV, dLdW, dLdOb, dLdSb = self.gradient_function(x, y)
                 self.W -= eta * dLdW
                 #self.U -= eta * dLdU
                 #self.V -= eta * dLdV
-                #self.state_bias -= eta * dLdSb
+                self.state_bias -= eta * dLdSb
                 #self.output_bias -= eta * dLdOb
+                eWBe.append(np.mean(self.eWBe(x, y)))
                 if self.show_progress_bar:
                     bar.update(i)
             if self.show_progress_bar:
@@ -193,6 +216,8 @@ class RNN:
             validation_losses.append(validation_loss)
             if self.verbose == 2:
                 print "--------"
+                print "Weight matrix: \n{0}".format(self.W)
+                print "eWBe {0}".format(np.mean(eWBe))
                 print "Epoch {0}/{1}".format(epoch, self.epochs)
                 print "Training loss: {0}".format(training_loss)
                 print "Validation loss: {0}".format(validation_loss)
@@ -292,7 +317,7 @@ class RNN:
             kernel_sum = kernel_sum/(t+1)
             kernel_sum = Convert1DTo2D(kernel_sum)
             dLdW += np.dot(np.dot(self.B, e), kernel_sum.T)
-            #dLdSb += np.dot(self.B,e)
+            dLdSb += np.dot(self.B,e) 
             num_dW_additions += 1
         return [dLdU, 
                 dLdV, 
@@ -331,7 +356,6 @@ class RNN:
         dLdOb = np.zeros(self.output_bias.shape)
         dLdSb = np.zeros(self.state_bias.shape)
 
-        num_dU_additions = 0
         num_dVdW_additions = 0
 
         delta_o = o - y
@@ -345,7 +369,6 @@ class RNN:
             state_activation = s[t]
 
             g = Convert1DTo2D(g)
-            o_linear_val = Convert1DTo2D(o_linear_val)
             state_activation = Convert1DTo2D(state_activation)
 
             g = g * self.state_activation.dactivate(s_linear_prev)
@@ -353,10 +376,10 @@ class RNN:
             dLdW += np.dot(self.B.T, g)
             num_dVdW_additions += 1
 
-        return [dLdU/num_dU_additions, 
-                dLdV/num_dVdW_additions, 
+        return [dLdU,
+                dLdV,
                 dLdW/num_dVdW_additions, 
-                dLdOb/num_dU_additions, 
+                dLdOb,
                 dLdSb/num_dVdW_additions]
 
 
