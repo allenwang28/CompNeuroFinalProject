@@ -6,7 +6,7 @@ from activation import Activation
 from sklearn.model_selection import train_test_split
 
 
-from scipy.linalg import eig
+from scipy.linalg import eig, inv
 
 # https://github.com/dennybritz/rnn-tutorial-rnnlm/blob/master/RNNLM.ipynb
 # for reference.
@@ -27,6 +27,14 @@ def Convert2DTo1D(vector):
     assert vector.shape[1] == 1
     return vector.flatten()
 
+
+def generate_2x2_matrix_with_signed_eigvals(sgn1, sgn2):
+    eigs = np.random.rand(2)
+    eig1 = sgn1 * max(eigs)
+    eig2 = sgn2 * min(eigs)
+    A = np.diag([eig1, eig2])
+    P = np.random.randn(2, 2)
+    return inv(P).dot(A).dot(P)
 
 
 class RNN:
@@ -125,14 +133,15 @@ class RNN:
                                         (state_layer_size, state_layer_size))
             else:
         """
-        self.U = np.eye(state_layer_size);
-        self.V = np.eye(state_layer_size);
+        self.U = np.random.uniform(0, 1., (state_layer_size, input_layer_size));
+        self.V = np.random.uniform(0, 1., (output_layer_size, state_layer_size));
         
-        self.W = np.random.uniform(-np.sqrt(1./state_layer_size),
-                                    np.sqrt(1./state_layer_size),
-                                    (state_layer_size, state_layer_size))
+        self.W = np.random.uniform(-0.5,
+                                   0.5,
+                                   (state_layer_size, state_layer_size))
         # see if W matrix randomization is the cause
-        self.W = -np.array([[0.51940038, -0.57702151],[0.64065148, 0.31259335]])
+        #self.W = np.random.rand(2, 2) - 1/2#np.array([[0.51940038, -0.57702151],[0.64065148, 0.31259335]])
+        print(self.W)
         #self.W = np.array([[0.51940038, -0.57702151],[0.64065148, 0.31259335]])
        
         self.state_bias = np.zeros((state_layer_size,1))
@@ -144,7 +153,7 @@ class RNN:
                                     np.sqrt(1./state_layer_size), 
                                     (state_layer_size, input_layer_size))
                                     """
-        self.B = self.W.copy().T
+        self.B = np.random.uniform(0., 0.5, self.V.T.shape) 
 
         self.eta = eta
         self.verbose = verbose
@@ -205,7 +214,7 @@ class RNN:
                 #self.V -= eta * dLdV
                 self.state_bias -= eta * dLdSb
                 #self.output_bias -= eta * dLdOb
-                eWBe.append(np.mean(self.eWBe(x, y)))
+                #eWBe.append(np.mean(self.eWBe(x, y)))
                 if self.show_progress_bar:
                     bar.update(i)
             if self.show_progress_bar:
