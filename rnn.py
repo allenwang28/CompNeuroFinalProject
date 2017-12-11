@@ -153,7 +153,7 @@ class RNN:
                                     np.sqrt(1./state_layer_size), 
                                     (state_layer_size, input_layer_size))
                                     """
-        self.B = np.random.uniform(0., 0.5, self.V.T.shape) 
+        self.B = np.random.uniform(0., 0.5, self.W.shape) - 1
 
         self.eta = eta
         self.verbose = verbose
@@ -306,7 +306,7 @@ class RNN:
 
         for t in reversed(range(T)):
             # Get the error at the output layer
-            e = delta_o[t]
+            e = self.V.T.dot(delta_o[t])
             o_linear_val = o_linear[t]
 
             e = Convert1DTo2D(e)
@@ -370,7 +370,7 @@ class RNN:
         delta_o = o - y
         for t in reversed(range(T)):
             # Backprop the error at the output layer
-            g = delta_o[t]
+            g = self.V.T.dot(delta_o[t])
             if t == 0:
                 s_linear_prev = s_linear[t - 1]
             else:
@@ -430,7 +430,7 @@ class RNN:
         delta_o = o - y
         for t in reversed(range(T)):
             # Backprop the error at the output layer
-            g = delta_o[t]
+            g = self.V.T.dot(delta_o[t])
             o_linear_val = o_linear[t]
             state_activation = s[t]
 
@@ -445,17 +445,17 @@ class RNN:
                 state_linear = s_linear[bptt_step]
                 state_activation_prev = s[bptt_step - 1]
                 x_present = x[t]
-                
+
                 state_linear = Convert1DTo2D(state_linear)
                 state_activation_prev = Convert1DTo2D(state_activation_prev)
                 x_present = Convert1DTo2D(x_present)
 
-                g = g  * self.state_activation.dactivate(state_linear)
+                g = g * self.state_activation.dactivate(state_linear)
                 dLdW += np.dot(g, state_activation_prev.T)
                 dLdSb += g
                 num_dVdW_additions += 1
 
-                g = np.dot(self.B.T,g)
+                g = np.dot(self.B,g)
         return [dLdU/num_dU_additions, 
                 dLdV/num_dVdW_additions, 
                 dLdW/num_dVdW_additions, 
