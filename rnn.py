@@ -153,7 +153,7 @@ class RNN:
                                     np.sqrt(1./state_layer_size), 
                                     (state_layer_size, input_layer_size))
                                     """
-        self.B = np.random.uniform(0., 0.5, self.W.shape) - 1
+        self.B = np.random.uniform(0., 0.5, self.W.shape)
 
         self.eta = eta
         self.verbose = verbose

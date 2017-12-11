@@ -22,6 +22,7 @@ def cli_args():
   parser.add_argument('--dt', type=float, default=1./60., help='simulation step size')
   parser.add_argument('--ball_pos', type=int, nargs=2, default=None, help='ball initial position (randomly generated if not supplied)')
   parser.add_argument('--ball_vel', type=float, nargs=2, default=None, help='ball initial velocity (randomly generated if not supplied)')
+  parser.add_argument('--skip_size', type=int, default=1, help='number of frames to skip in dumped trajectories')
   return parser.parse_args()
 
 
@@ -83,8 +84,8 @@ if __name__=='__main__':
 
   space = build_space()
 
-  trajectories = [generate_trajectory(space, args.n_steps) for _ in range(args.n_trajectories)]
-  fname = '{}trajectories_{}steps_{}seed.pkl'.format(args.n_trajectories, args.n_steps, args.seed if args.seed else 'no')
+  trajectories = [generate_trajectory(space, args.skip_size*args.n_steps)[::args.skip_size] for _ in range(args.n_trajectories)]
+  fname = '{}trajectories_{}steps_{}skip_{}seed.pkl'.format(args.n_trajectories, args.n_steps, args.skip_size, args.seed if args.seed else 'no')
   with open(fname, 'wb') as f:
     pickle.dump(trajectories, f, protocol=2)
 
