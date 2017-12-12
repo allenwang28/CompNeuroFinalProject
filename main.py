@@ -9,6 +9,9 @@ import pickle
 import os
 import matplotlib.pyplot as plt
 
+
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
@@ -93,26 +96,56 @@ if __name__ == "__main__":
                     epochs=args.epochs,
                     bptt_truncate = args.bptt_truncate,
                     learning_rule = 'bptt',
-                    kernel = kernel,
+                    tau = args.tau,
                     eta=args.eta,
                     rand=args.rand,
                     verbose=args.verbose)       
-         rnn_mlr =  RNN(input_layer_size,
+         rnn_fa  =  RNN(input_layer_size,
+                    args.state_layer_size, args.state_layer_activation,
+                    output_layer_size, args.output_layer_activation,
+                    epochs=args.epochs,
+                    bptt_truncate = args.bptt_truncate,
+                    learning_rule = 'fa',
+                    tau = args.tau,
+                    eta=args.eta,
+                    rand=args.rand,
+                    verbose=args.verbose)       
+         rnn_dfa = RNN(input_layer_size,
+                    args.state_layer_size, args.state_layer_activation,
+                    output_layer_size, args.output_layer_activation,
+                    epochs=args.epochs,
+                    bptt_truncate = args.bptt_truncate,
+                    learning_rule = 'dfa',
+                    tau = args.tau,
+                    eta=args.eta,
+                    rand=args.rand,
+                    verbose=args.verbose)       
+         rnn_m   =  RNN(input_layer_size,
                     args.state_layer_size, args.state_layer_activation,
                     output_layer_size, args.output_layer_activation,
                     epochs=args.epochs,
                     bptt_truncate = args.bptt_truncate,
                     learning_rule = 'modified',
-                    kernel = kernel,
+                    tau = args.tau,
                     eta=args.eta,
                     rand=args.rand,
                     verbose=args.verbose)  
+         # Initialize all RNNs to start with the same random values.
+         rnns = [rnn_bptt, rnn_fa, rnn_dfa, rnn_m]
+         W = rnn_fa.W
+         U = rnn_fa.U
+         V = rnn_fa.V
+         B = rnn_fa.B
+         for rnn in rnns:
+             rnn.W = W.copy()
+             rnn.U = U.copy()
+             rnn.V = V.copy()
+             rnn.B = B.copy()
 
     # TODO - dummy placeholder simulation below
     trajectories = None
     if os.path.exists(args.training_data_path):
         with open(args.training_data_path, 'rb') as f:
-            print "training"
             trajectories = pickle.load(f)
             if not trajectories:
                 raise Exception('Invalid pkl file')
@@ -127,7 +160,6 @@ if __name__ == "__main__":
         for i in range(10):
             x = np.random.normal(0, 1, (5,2))
             y = x / 10.
-
             X.append(x)
             Y.append(y)
 
@@ -139,6 +171,28 @@ if __name__ == "__main__":
         plt.legend()
         plt.show()
     elif args.mode == 'compete':
-        training_losses, validation_losses = rnn_bptt.fit(X,Y)
+        labels = ['bptt', 'fa', 'dfa', 'modified']
+
+        tr_losses = []
+        te_losses = []
+
+        fig, (ax1, ax2) = plt.subplots(2, 1)
+
+        for rnn, label in zip(rnns, labels):
+            print "Training {0}".format(label)
+            tr_loss, te_loss = rnn.fit(X, Y)
+            tr_losses.append(tr_loss)
+            te_losses.append(te_loss)
+
+        print labels
+        for rnn, tr_loss, te_loss, label in zip(rnns, tr_losses, te_losses, labels):
+            print ("Weight matrix for {0}:\n {1}\n".format(label, rnn.W))
+            ax1.plot(range(args.epochs), tr_loss, label=label)
+            ax1.set_title('Training Losses')
+            ax2.plot(range(args.epochs), te_loss, label=label)
+            ax2.set_title('Test Losses')
+
+        plt.legend()
+        plt.show()
 
 

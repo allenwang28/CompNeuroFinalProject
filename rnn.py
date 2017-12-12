@@ -143,7 +143,6 @@ class RNN:
                                    (state_layer_size, state_layer_size))
         # see if W matrix randomization is the cause
         #self.W = np.random.rand(2, 2) - 1/2#np.array([[0.51940038, -0.57702151],[0.64065148, 0.31259335]])
-        print(self.W)
         #self.W = np.array([[0.51940038, -0.57702151],[0.64065148, 0.31259335]])
        
         self.state_bias = np.zeros((state_layer_size,1))
@@ -197,7 +196,7 @@ class RNN:
 
         X = np.array(X)
         y = np.array(y)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=validation_size)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=validation_size, random_state=0)
         if self.verbose:
             print "Validation size: {0}".format(validation_size)
             print "Training on {0} samples".format(len(X_train))
@@ -208,7 +207,21 @@ class RNN:
         if self.show_progress_bar:
             bar = ProgressBar(max_value = len(X_train))
         for epoch in range(self.epochs):
-            eWBe = []
+            if self.learning_rule == 'modified':
+                self.kernel_convs = np.zeros_like(self.kernel_convs)
+
+            training_loss = self.score(X_train, y_train)
+            validation_loss = self.score(X_test, y_test)
+            training_losses.append(training_loss)
+            validation_losses.append(validation_loss)
+            if self.verbose == 2:
+                print "--------"
+                print "Epoch {0}/{1}".format(epoch, self.epochs)
+                print "Training loss: {0}".format(training_loss)
+                print "Validation loss: {0}".format(validation_loss)
+                print "--------"
+
+            #eWBe = []
             for i, (x, y) in enumerate(zip(X_train, y_train)):
                 dLdU, dLdV, dLdW, dLdOb, dLdSb = self.gradient_function(x, y)
                 self.W -= eta * dLdW
@@ -221,19 +234,6 @@ class RNN:
                     bar.update(i)
             if self.show_progress_bar:
                 bar.update(0)
-            training_loss = self.score(X_train, y_train)
-            validation_loss = self.score(X_test, y_test)
-            training_losses.append(training_loss)
-            validation_losses.append(validation_loss)
-            if self.verbose == 2:
-                print "--------"
-                print "Weight matrix: \n{0}".format(self.W)
-                print "eWBe {0}".format(np.mean(eWBe))
-                print "Epoch {0}/{1}".format(epoch, self.epochs)
-                print "Training loss: {0}".format(training_loss)
-                print "Validation loss: {0}".format(validation_loss)
-                print "--------"
-
 
         return training_losses, validation_losses
     
