@@ -37,7 +37,7 @@ def generate_2x2_matrix_with_signed_eigvals(sgn1, sgn2):
     return inv(P).dot(A).dot(P)
 
 
-class RNN:
+class RNN(object):
     def __init__(self,
                  input_layer_size,
                  state_layer_size, state_layer_activation,
