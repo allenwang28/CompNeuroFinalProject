@@ -116,7 +116,9 @@ class RNN:
 
         self.tau = tau
         self.bptt_truncate = bptt_truncate
-    
+
+        self.kernel_convs = None
+
         # U - weight matrix from input into state layer.
         # W - weight matrix from state layer to state layer.
         # V - weight matrix from state layer to output layer.
@@ -244,8 +246,11 @@ class RNN:
             o:
                 The activation of the output layer.
             s:
-                The activation of the hidden state. 
+                The activation of the hidden state.
         """
+        if self.learning_rule == 'modified':
+            self.kernel_convs = np.zeros((self.state_layer_size, x.shape[0]))
+
         T = x.shape[0]
 
         s = np.zeros((T + 1, self.state_layer_size))
@@ -260,6 +265,9 @@ class RNN:
             state_linear = np.dot(self.U, x[t]) + np.dot(self.W, s[t-1]) + state_bias
             s_linear[t] = state_linear
             s[t] = self.state_activation.activate(state_linear)
+            if self.learning_rule == 'modified' and t > 0:
+                alpha = 1/self.tau
+                self.kernel_convs[:, t] = alpha*s[t] + (1 - alpha)*self.kernel_convs[:, t - 1]
             output_linear = np.dot(self.V, s[t]) + output_bias
             o[t] = self.output_activation.activate(output_linear)
             o_linear[t] = output_linear
@@ -312,26 +320,26 @@ class RNN:
             e = Convert1DTo2D(e)
             o_linear_val = Convert1DTo2D(o_linear_val)
 
-            kernel_sum = 0
+            #kernel_sum = 0
 
             # Backpropagation through time for at most bptt truncate steps
             #for t_prime in (range(max(0,t-50),t+1)):
-            for t_prime in (range(t+1)):
-                state_activation = s[t_prime]
-                state_linear = s_linear[t_prime - 1]
+            #for t_prime in (range(t+1)):
+            #    state_activation = s[t_prime]
+            #    state_linear = s_linear[t_prime - 1]
 
-                k = self.kernel_compute(t - t_prime)
-                kernel_sum += k * state_activation * self.state_activation.dactivate(state_linear)
+            #    k = self.kernel_compute(t - t_prime)
+            #    kernel_sum += k * state_activation * self.state_activation.dactivate(state_linear)
 
-            kernel_sum = kernel_sum/(t+1)
-            kernel_sum = Convert1DTo2D(kernel_sum)
-            dLdW += np.dot(np.dot(self.B, e), kernel_sum.T)
-            dLdSb += np.dot(self.B,e) 
+            #kernel_sum = kernel_sum/(t+1)
+            #kernel_sum = Convert1DTo2D(kernel_sum)
+            dLdW += self.B.dot(e).dot(Convert1DTo2D(self.kernel_convs[:, t]).T) #np.dot(np.dot(self.B, e), kernel_sum.T)
+            dLdSb += np.dot(self.B,e)
             num_dW_additions += 1
-        return [dLdU, 
-                dLdV, 
-                dLdW/num_dW_additions, 
-                dLdOb, 
+        return [dLdU,
+                dLdV,
+                dLdW/num_dW_additions,
+                dLdOb,
                 dLdSb/num_dW_additions]
 
     def direct_feedback_alignment(self, x, y):
@@ -416,7 +424,7 @@ class RNN:
             bptt_truncate = self.bptt_truncate
 
         o, s, s_linear, o_linear = self.forward_propagation(x)
-
+        
         dLdU = np.zeros(self.U.shape)
         dLdV = np.zeros(self.V.shape)
         dLdW = np.zeros(self.W.shape)
