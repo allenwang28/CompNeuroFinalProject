@@ -365,7 +365,7 @@ class RNN(object):
             bptt_truncate = self.bptt_truncate
 
         o, s, s_linear, o_linear = self.forward_propagation(x)
-
+        
         dLdU = np.zeros(self.U.shape)
         dLdV = np.zeros(self.V.shape)
         dLdW = np.zeros(self.W.shape)
@@ -373,30 +373,42 @@ class RNN(object):
         dLdOb = np.zeros(self.output_bias.shape)
         dLdSb = np.zeros(self.state_bias.shape)
 
+        num_dU_additions = 0
         num_dVdW_additions = 0
 
         delta_o = o - y
         for t in reversed(range(T)):
             # Backprop the error at the output layer
-            g = self.V.T.dot(delta_o[t])
-            if t == 0:
-                s_linear_prev = s_linear[t - 1]
-            else:
-                s_linear_prev = 0
+            e = self.V.T.dot(delta_o[t])
+            o_linear_val = o_linear[t]
             state_activation = s[t]
 
-            g = Convert1DTo2D(g)
+            e = Convert1DTo2D(e)
+            o_linear_val = Convert1DTo2D(o_linear_val)
             state_activation = Convert1DTo2D(state_activation)
 
-            g = g * self.state_activation.dactivate(s_linear_prev)
+            num_dU_additions += 1
 
-            dLdW += np.dot(self.B.T, g)
-            num_dVdW_additions += 1
+            # Backpropagation through time for at most bptt truncate steps
+            for bptt_step in reversed(range(max(0, t - bptt_truncate),  t + 1)):
+                state_linear = s_linear[bptt_step]
+                state_activation_prev = s[bptt_step - 1]
+                x_present = x[t]
+                g = self.B.dot(e.copy())
 
-        return [dLdU,
-                dLdV,
+                state_linear = Convert1DTo2D(state_linear)
+                state_activation_prev = Convert1DTo2D(state_activation_prev)
+                x_present = Convert1DTo2D(x_present)
+
+                g = g * self.state_activation.dactivate(state_linear)
+                dLdW += np.dot(g, state_activation_prev.T)
+                dLdSb += g
+                num_dVdW_additions += 1
+
+        return [dLdU/num_dU_additions, 
+                dLdV/num_dVdW_additions, 
                 dLdW/num_dVdW_additions, 
-                dLdOb,
+                dLdOb/num_dU_additions, 
                 dLdSb/num_dVdW_additions]
 
 
@@ -604,7 +616,7 @@ class RNN(object):
                 dLdSb += g
                 num_dVdW_additions += 1
 
-                g = g * np.dot(self.W.T, g)
+                g = np.dot(self.W.T, g)
         return [dLdU/num_dU_additions, 
                 dLdV/num_dVdW_additions, 
                 dLdW/num_dVdW_additions, 
