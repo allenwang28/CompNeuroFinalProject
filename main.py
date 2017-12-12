@@ -14,6 +14,11 @@ from multiprocessing import Pool
 import copy_reg
 import types
 
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+RESULTS_DIR = os.path.join(BASE_DIR, "results")
+IMAGES_DIR = os.path.join(BASE_DIR, "images")
+
+
 # Use this for multithreading in compete mode
 def _pickle_method(method):
     func_name = method.im_func.__name__
@@ -235,11 +240,21 @@ if __name__ == "__main__":
             label = result['label']
             print ("Weight matrix for {0}:\n {1}\n".format(label, W))
             ax1.plot(range(args.epochs), tr_loss, label=label)
-            ax1.set_title('Training Losses')
+            ax1.set_title('Training Losses - learning_rate = {0}, tau = {1}'.format(args.eta,
+                                                                                    args.tau))
             ax2.plot(range(args.epochs), te_loss, label=label)
             ax2.set_title('Test Losses')
 
+        fname = "{0}-epochs{1}".format(args.training_data_path[:-4],
+                                       args.epochs)                      
+        results_dump_path = os.path.join(RESULTS_DIR, "{0}.pkl".format(fname))
+        image_dump_path = os.path.join(IMAGES_DIR, "{0}.png".format(fname))
+
+        with open(results_dump_path, 'wb') as f:
+            pickle.dump(results, f, protocol=2)
         plt.legend()
         plt.show()
+        fig.savefig(image_dump_path)
+
 
 
