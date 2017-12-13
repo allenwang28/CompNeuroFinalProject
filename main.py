@@ -105,7 +105,7 @@ if __name__ == "__main__":
                         action='store',
                         type=int,
                         help='state layer size',
-                        default=16)
+                        default=2)
 
     parser.add_argument('--eta', help='Learning Rate', type=float, default=0.001)
     parser.add_argument('--epochs', help='Epochs', type=int, default=1000)
@@ -113,6 +113,11 @@ if __name__ == "__main__":
                         type=int,
                         help='Between 0-2', 
                         dest='verbose')
+
+    parser.add_argument('--predict_next',
+                        type=int,
+                        help='How many frames next to predict',
+                        default=1)
 
     parser.add_argument('--rand',
                         type=int,
@@ -131,16 +136,9 @@ if __name__ == "__main__":
             trajectories = pickle.load(f)
             if not trajectories:
                 raise Exception('Invalid pkl file')
-            X = []
-            Y = []
-            for trajectory in trajectories:
-                x = np.array(trajectory[:-1])
-                y = np.array(trajectory[1:])
-                m = MinMaxScaler(feature_range=(0,1)).fit(x)
-                X.append(m.transform(x))
-                Y.append(m.transform(y))
-                #X.append(np.array(trajectory[:-1])/600 - 0.5)
-                #Y.append(np.array(trajectory[1:])/600 - 0.5)
+            trajectories = np.array(trajectories)
+            X = trajectories[:,:-args.predict_next,:]
+            Y = trajectories[:,args.predict_next:,:]
     else:
         X = []
         Y = []

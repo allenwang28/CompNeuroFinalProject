@@ -74,7 +74,7 @@ def generate_trajectory(space, n_steps):
     trajectory.append(ball.body.position)
 
   space.remove(ball, ball.body)
-  return np.array(trajectory)
+  return np.array(trajectory) / float(SCREEN_SIZE)
 
 
 if __name__=='__main__':
