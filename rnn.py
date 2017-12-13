@@ -4,6 +4,7 @@ from progressbar import ProgressBar
 
 from activation import Activation
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
 
 
 from scipy.linalg import eig, inv
@@ -650,7 +651,8 @@ class RNN(object):
         predictions = self.predict(X)
         mses = []
         for prediction, y in zip(predictions, Y):
-           mses.append(np.mean((predictions - y)**2))
+           #mses.append(np.mean((prediction - y)**2))
+           mses.append(mean_squared_error(prediction, y))
         return np.mean(mses)
                    
 

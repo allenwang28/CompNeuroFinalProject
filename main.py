@@ -13,6 +13,7 @@ import itertools
 from multiprocessing import Pool
 import copy_reg
 import types
+from sklearn.preprocessing import MinMaxScaler
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
@@ -104,7 +105,7 @@ if __name__ == "__main__":
                         action='store',
                         type=int,
                         help='state layer size',
-                        default=2)
+                        default=16)
 
     parser.add_argument('--eta', help='Learning Rate', type=float, default=0.001)
     parser.add_argument('--epochs', help='Epochs', type=int, default=1000)
@@ -133,13 +134,19 @@ if __name__ == "__main__":
             X = []
             Y = []
             for trajectory in trajectories:
-                X.append(np.array(trajectory[:-1])/600 - 0.5)
-                Y.append(np.array(trajectory[1:])/600 - 0.5)
+                x = np.array(trajectory[:-1])
+                y = np.array(trajectory[1:])
+                m = MinMaxScaler(feature_range=(0,1)).fit(x)
+                X.append(m.transform(x))
+                Y.append(m.transform(y))
+                #X.append(np.array(trajectory[:-1])/600 - 0.5)
+                #Y.append(np.array(trajectory[1:])/600 - 0.5)
     else:
         X = []
         Y = []
         for i in range(10):
-            x = np.random.normal(0, 1, (5,2))
+            #x = np.random.normal(0, 1, (5,2))
+            x = np.random.uniform(0, 1, (5,2))
             y = x / 10.
             X.append(x)
             Y.append(y)
@@ -156,6 +163,15 @@ if __name__ == "__main__":
               rand=args.rand,
               verbose=args.verbose)
         training_losses, validation_losses = rnn.fit(X, Y, validation_size=args.validation_size)   
+        X_sample = X[0]
+        y_sample = Y[0]
+
+        predictions = rnn.predict([X_sample])
+        print "Predictions:"
+        print predictions
+        print "True:"
+        print y_sample
+
         plt.plot(range(args.epochs),training_losses, label='Training Loss')
         plt.plot(range(args.epochs),validation_losses, label='Validation Loss')
         plt.title("Training and validation losses for {0}".format(args.learning_rule))
