@@ -406,6 +406,7 @@ class RNN(object):
                 dLdSb += g
                 num_dVdW_additions += 1
 
+        num_dVdW_additions = T
         return [dLdU/num_dU_additions, 
                 dLdV/num_dVdW_additions, 
                 dLdW/num_dVdW_additions, 
@@ -477,6 +478,7 @@ class RNN(object):
                 num_dVdW_additions += 1
 
                 g = np.dot(self.B,g)
+        num_dVdW_additions = T
         return [dLdU/num_dU_additions, 
                 dLdV/num_dVdW_additions, 
                 dLdW/num_dVdW_additions, 
@@ -618,6 +620,7 @@ class RNN(object):
                 num_dVdW_additions += 1
 
                 g = np.dot(self.W.T, g)
+        num_dVdW_additions = T
         return [dLdU/num_dU_additions, 
                 dLdV/num_dVdW_additions, 
                 dLdW/num_dVdW_additions, 
