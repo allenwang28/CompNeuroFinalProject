@@ -136,9 +136,14 @@ class RNN(object):
                                         (state_layer_size, state_layer_size))
             else:
         """
-        self.U = np.random.uniform(0, 1., (state_layer_size, input_layer_size));
-        self.V = np.random.uniform(0, 1., (output_layer_size, state_layer_size));
-        
+        if state_layer_size == input_layer_size and state_layer_size == output_layer_size:
+            print "Using identity matrices for U and V"
+            self.U = np.eye(state_layer_size)
+            self.V = np.eye(state_layer_size)
+        else:
+            self.U = np.random.uniform(1, 2., (state_layer_size, input_layer_size));
+            self.V = np.random.uniform(1, 2., (output_layer_size, state_layer_size));
+            
         self.W = np.random.uniform(-0.5,
                                    0.5,
                                    (state_layer_size, state_layer_size))
