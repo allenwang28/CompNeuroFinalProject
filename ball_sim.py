@@ -1,6 +1,7 @@
 import argparse
 import random
 
+import progressbar
 import numpy as np
 import pickle
 import pymunk
@@ -84,7 +85,10 @@ if __name__=='__main__':
 
   space = build_space()
 
-  trajectories = [generate_trajectory(space, args.skip_size*args.n_steps)[::args.skip_size] for _ in range(args.n_trajectories)]
+  bar = progressbar.ProgressBar()
+  trajectories = []
+  for _ in bar(range(args.n_trajectories)):
+    trajectories.append(generate_trajectory(space, args.skip_size*args.n_steps)[::args.skip_size])
   fname = '{}trajectories_{}steps_{}skip_{}seed.pkl'.format(args.n_trajectories, args.n_steps, args.skip_size, args.seed if args.seed else 'no')
   with open(fname, 'wb') as f:
     pickle.dump(trajectories, f, protocol=2)

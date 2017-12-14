@@ -176,6 +176,7 @@ if __name__ == "__main__":
         plt.plot(range(args.epochs),validation_losses, label='Validation Loss')
         plt.title("Training and validation losses for {0}".format(args.learning_rule))
         plt.legend()
+        plt.tight_layout()
         plt.show()
     elif args.mode == 'compete':
         labels = ['bptt', 'fa', 'dfa', 'modified']
