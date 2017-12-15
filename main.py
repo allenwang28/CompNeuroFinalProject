@@ -14,6 +14,7 @@ from multiprocessing import Pool
 import copy_reg
 import types
 from sklearn.preprocessing import MinMaxScaler
+from scipy.interpolate import interp1d
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
@@ -48,6 +49,7 @@ def fit_rnn(params):
 
     tr_loss, te_loss = rnn.fit(X, y)
     print "{0} finished training!".format(label)
+    return_map['rnn'] = rnn
     return_map['tr_loss'] = tr_loss
     return_map['te_loss'] = te_loss
     return_map['W'] = rnn.W
@@ -262,56 +264,48 @@ if __name__ == "__main__":
         print "Fits completed!"
         fig, (ax1, ax2) = plt.subplots(2, 1)
 
-        for result in results:
+        colors = ['blue', 'orange', 'green', 'purple']
+
+        for result, color in zip(results, colors):
             W = result['W']
             tr_loss = result['tr_loss']
             te_loss = result['te_loss']
             label = result['label']
             print ("Weight matrix for {0}:\n {1}\n".format(label, W))
-            ax1.plot(range(args.epochs), tr_loss, label=label)
+            ax1.plot(range(args.epochs), tr_loss, label=label, color=color)
             ax1.set_title('Training Losses - learning_rate = {0}, tau = {1}'.format(args.eta,
                                                                                     args.tau))
-            ax2.plot(range(args.epochs), te_loss, label=label)
+            ax2.plot(range(args.epochs), te_loss, label=label, color=color)
             ax2.set_title('Test Losses')
 
         fname = "{0}-epochs{1}".format(args.training_data_path[:-4],
                                        args.epochs)                      
         results_dump_path = os.path.join(RESULTS_DIR, "{0}.pkl".format(fname))
-        image_dump_path = os.path.join(IMAGES_DIR, "{0}.png".format(fname))
+        image_dump_path1 = os.path.join(IMAGES_DIR, "{0}-1.png".format(fname))
+        image_dump_path2 = os.path.join(IMAGES_DIR, "{0}-2.png".format(fname))
 
         with open(results_dump_path, 'wb') as f:
             pickle.dump(results, f, protocol=2)
-        plt.legend()
+
+        plt.legend(loc='best')
+        fig.savefig(image_dump_path1)
+
+        fig = plt.figure(2)
+
+        X_sample = X[-1]
+        Y_sample = Y[-1]
+        plt.scatter(Y_sample.T[0], Y_sample.T[1], label='Original', color='black')
+
+
+        for result, color in zip(results, colors):
+            rnn = result['rnn']
+            label = result['label']
+            y_pred = rnn.predict([X_sample])[0]
+            plt.scatter(y_pred.T[0], y_pred.T[1], label=label, color=color)
+        plt.xlim(0,1)
+        plt.ylim(0,1)
+        plt.legend(loc='best')
+        fig.savefig(image_dump_path2)
         plt.show()
-        fig.savefig(image_dump_path)
-    elif args.mode == 'train_one':
-
-        rnn = RNN(input_layer_size,
-              args.state_layer_size, args.state_layer_activation,
-              output_layer_size, args.output_layer_activation,
-              epochs=args.epochs,
-              bptt_truncate = args.bptt_truncate,
-              learning_rule = args.learning_rule,
-              tau = args.tau,
-              eta=args.eta,
-              rand=args.rand,
-              verbose=args.verbose)
-        training_losses, validation_losses = rnn.fit(X, Y, validation_size=args.validation_size)   
-        X_sample = X[0]
-        y_sample = Y[0]
-
-        predictions = rnn.predict([X_sample])
-        print "Predictions:"
-        print predictions
-        print "True:"
-        print y_sample
-
-        plt.plot(range(args.epochs),training_losses, label='Training Loss')
-        plt.plot(range(args.epochs),validation_losses, label='Validation Loss')
-        plt.title("Training and validation losses for {0}".format(args.learning_rule))
-        plt.legend()
-        plt.tight_layout()
-        plt.show()
-
 
 
