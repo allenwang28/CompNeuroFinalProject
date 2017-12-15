@@ -181,6 +181,8 @@ if __name__ == "__main__":
         print predictions
         print "True:"
         print y_sample
+        with open('results/test.pkl', 'wb') as f:
+            pickle.dump(np.array(predictions), f, protocol=2)
 
         plt.plot(range(args.epochs),training_losses, label='Training Loss')
         plt.plot(range(args.epochs),validation_losses, label='Validation Loss')

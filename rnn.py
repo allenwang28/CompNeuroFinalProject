@@ -213,8 +213,8 @@ class RNN(object):
         if self.show_progress_bar:
             bar = ProgressBar(max_value = len(X_train))
         for epoch in range(self.epochs):
-            if self.learning_rule == 'modified':
-                self.kernel_convs = np.zeros_like(self.kernel_convs)
+            #if self.learning_rule == 'modified':
+            #    self.kernel_convs = np.zeros_like(self.kernel_convs)
 
             training_loss = self.score(X_train, y_train)
             validation_loss = self.score(X_test, y_test)

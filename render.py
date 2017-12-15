@@ -19,7 +19,7 @@ def render_trajectory(trajectory, rescale):
         sys.exit(0)
     screen.fill(THECOLORS['white'])
     if rescale:
-      pt = (int(pt[0]+1/2) * 600, int(pt[1]+1/2) * 600)
+      pt = (int(pt[0] * 600), int(pt[1] * 600))
     pt = (int(pt[0]), int(pt[1]))
     pygame.draw.circle(screen, THECOLORS['red'], pt, 25)
     clock.tick(50)
