@@ -66,10 +66,15 @@ if __name__ == "__main__":
                         help="Choose between \'bptt\' \'fa\' \'dfa\' and \'modified\'")
 
     parser.add_argument('--mode',
-                        choices=['normal','compete'],
+                        choices=['normal','compete'], 
                         action='store',
                         default='normal',
                         help='Either choose a learning rule or compare the gradients for different learning rules')
+
+    parser.add_argument('--train_one',
+                        action='store',
+                        default=0,
+                        help='0 means no, 1+ means yes')
 
     parser.add_argument('--training_data_path',
                         default='none',
@@ -85,7 +90,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--kernel', help='TODO')
     parser.add_argument('--tau', type=float,
-                        default=10000.)
+                        default=10.)
 
     parser.add_argument('--validation_size', type=float,
                         default=0.3)
@@ -148,6 +153,13 @@ if __name__ == "__main__":
             y = x / 10.
             X.append(x)
             Y.append(y)
+
+    if args.train_one > 0:
+        X_first = X[0]
+        Y_first = Y[0]
+
+        X = np.array([X_first, X_first])
+        Y = np.array([Y_first, Y_first])
 
     if args.mode == 'normal':
         rnn = RNN(input_layer_size,
@@ -270,6 +282,34 @@ if __name__ == "__main__":
         plt.legend()
         plt.show()
         fig.savefig(image_dump_path)
+    elif args.mode == 'train_one':
+
+        rnn = RNN(input_layer_size,
+              args.state_layer_size, args.state_layer_activation,
+              output_layer_size, args.output_layer_activation,
+              epochs=args.epochs,
+              bptt_truncate = args.bptt_truncate,
+              learning_rule = args.learning_rule,
+              tau = args.tau,
+              eta=args.eta,
+              rand=args.rand,
+              verbose=args.verbose)
+        training_losses, validation_losses = rnn.fit(X, Y, validation_size=args.validation_size)   
+        X_sample = X[0]
+        y_sample = Y[0]
+
+        predictions = rnn.predict([X_sample])
+        print "Predictions:"
+        print predictions
+        print "True:"
+        print y_sample
+
+        plt.plot(range(args.epochs),training_losses, label='Training Loss')
+        plt.plot(range(args.epochs),validation_losses, label='Validation Loss')
+        plt.title("Training and validation losses for {0}".format(args.learning_rule))
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
 
 
 
